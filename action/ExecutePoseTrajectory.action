@@ -1,0 +1,34 @@
+#goal definition
+uint8 PTA_RIGHT=0
+uint8 PTA_LEFT=1
+# Arrays here allow for multiple simultaneous arms
+geometry_msgs/PoseArray[] PoseTargets
+uint8[] ArmIndex
+---
+#result definition
+bool Success
+---
+#feedback
+# Command State Definitions
+uint8 PTA_READY=0
+uint8 PTA_TRANS_EULER=1
+uint8 PTA_TRANS_QUAT=2
+uint8 PTA_TRAJ=3
+
+# Grasping State Definitions
+uint8 PTA_GRASP_LIMP=0
+uint8 PTA_GRASP_STATIC=1
+uint8 PTA_GRASP_NOW=2
+uint8 PTA_GRASP_AT_END=3
+uint8 PTA_GRASP_RELEASE_NOW=4
+uint8 PTA_GRASP_RELEASE_AT_END=5
+
+# Error State Definitions
+uint8 PTA_NO_ERROR=0
+uint8 PTA_INVALID_POSE=1
+uint8 PTA_INVALID_TRANSITION=2
+uint8 PTA_BROKEN_CHAIN=3
+
+uint8 CommandState
+uint8 GraspState
+uint8 ErrorState

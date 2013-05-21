@@ -1,0 +1,1 @@
+The hubo_motion_ros package provides ROS action servers to handle either end-effector pose or joint-space trajectories for a Hubo robot.
