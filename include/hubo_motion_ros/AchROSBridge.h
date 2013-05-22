@@ -18,11 +18,11 @@
  * without modification, are permitted provided that the following
  * conditions are met:
  * * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
+ *   notice, this list of conditions and the following disclaimer.
  * * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following
- * disclaimer in the documentation and/or other materials provided
- * with the distribution.
+ *   copyright notice, this list of conditions and the following
+ *   disclaimer in the documentation and/or other materials provided
+ *   with the distribution.
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -50,6 +50,8 @@
 #include <ach.h>
 #include <string>
 
+#include <ros/ros.h>
+
 template <class DataClass>
 class AchROSBridge
 {
@@ -60,11 +62,14 @@ public:
 	/// Destructor
 	~AchROSBridge();
 
-	/// Reads new data from the ach channel
-	ach_status updateState();
-
 	/// Writes new data to the ach channel
-	ach_status pushState(const DataClass& data);
+	ach_status_t pushState(const DataClass& data);
+
+	/// Reads new data from the ach channel
+	ach_status_t updateState();
+
+	/// Waits for new data from the ach channel
+	const DataClass&  waitState(const uint32_t millis);
 
 	/// Returns the data with an option to update first
 	const DataClass& getState(bool update = true);
@@ -81,80 +86,114 @@ AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 {
 	if (chanName == "")
 	{
-		fprintf(stderr, "\nInvalid Ach channel name specified.\n");
+		ROS_ERROR("Invalid Ach channel name specified.");
 	}
 
 	mAchChanName = chanName;
 
-	ach_status r = ACH_OK;
+	ach_status_t r = ACH_OK;
 	r = ach_create(mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
 
 	if (r == ACH_EEXIST)
 	{
-		fprintf(stderr, "\nFound existing state channel '%s'.\n",
+		ROS_INFO("Found existing Ach channel '%s'.",
 			mAchChanName.c_str());
 	}
 	else if( ACH_OK != r )
 	{
-		fprintf(stderr, "\nUnable to create state channel '%s', error: (%d) %s\n",
+		ROS_ERROR("Unable to create Ach channel '%s', error: (%d) %s",
 			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
+
+	r = ach_chmod(&mAchChan, 666);
+
+	if( ACH_OK != r )
+	{
+		ROS_ERROR("Unable to modify Ach channel '%s', error: (%d) %s",
+			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+	}
+
 
 	memset(&mAchData, 0, sizeof(mAchData));
 	r = ach_open( &mAchChan, mAchChanName.c_str(), NULL );
 
 	if( ACH_OK != r )
 	{
-		fprintf(stderr, "\nUnable to open state channel '%s', error: (%d) %s\n",
+		ROS_ERROR("Unable to open Ach channel '%s', error: (%d) %s",
 			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
+
 }
 
 template <class DataClass>
 AchROSBridge<DataClass>::~AchROSBridge()
 {
-	ach_close(&mAchChan);
+	ach_status_t r = ACH_OK;
+	r = ach_close(&mAchChan);
+	//r = ach_unlink(mAchChanName.c_str());
 }
 
-template <class DataClass>
-ach_status AchROSBridge<DataClass>::updateState()
-{
-	ach_status r = ACH_OK;
-	size_t fs = 0;
-	r = ach_get( &mAchChan, &mAchData, sizeof(mAchData), &fs, NULL, ACH_O_LAST );
-
-	// Need some error checking here... fs always = 0
-//	if (fs != sizeof(mAchData))
-//	{
-//		fprintf(stderr, "\nProblem reading Ach channel '%s'; data size: %zi != bytes read: %zi. Please check your data struct definitions.\n",
-//			mAchChanName.c_str(),sizeof(mAchData),fs);
-//	}
-
-	if( ACH_OK != r && ACH_STALE_FRAMES != r)
-	{
-		fprintf(stderr, "\nProblem reading Ach channel '%s', error: (%d) %s\n",
-			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
-	}
-
-	return r;
-}
 
 template <class DataClass>
-ach_status AchROSBridge<DataClass>::pushState(const DataClass& data)
+ach_status_t AchROSBridge<DataClass>::pushState(const DataClass& data)
 {
-	ach_status r = ACH_OK;
+	ach_status_t r = ACH_OK;
 
 	mAchData = data;
 	r = ach_put(&mAchChan, &mAchData, sizeof(mAchData));
 
 	if( ACH_OK != r )
 	{
-		fprintf(stderr, "\nProblem reading Ach channel '%s', error: (%d) %s\n",
+		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
 			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
 
 	return r;
 }
+
+template <class DataClass>
+ach_status_t AchROSBridge<DataClass>::updateState()
+{
+	ach_status_t r = ACH_OK;
+	size_t fs = 0;
+	r = ach_get( &mAchChan, &mAchData, sizeof(mAchData), &fs, NULL, ACH_O_LAST );
+
+	if (ACH_STALE_FRAMES != r)
+	{
+		if (fs != sizeof(mAchData))
+		{
+			ROS_ERROR("Problem reading Ach channel '%s'; data size: %zi != bytes read: %zi. Please check your data struct definitions.",
+				mAchChanName.c_str(),sizeof(mAchData),fs);
+		}
+
+		if(ACH_OK != r)
+		{
+			ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+				mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+		}
+	}
+
+	return r;
+}
+
+template <class DataClass>
+const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
+{
+	struct timespec waitTime;
+	clock_gettime(ACH_DEFAULT_CLOCK, &waitTime);
+	waitTime.tv_nsec += millis * 1000 * 1000;
+	ach_status_t r = ACH_OK;
+	size_t fs = 0;
+	r = ach_get( &mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST );
+
+	if (r == ACH_TIMEOUT)
+	{
+		ROS_INFO("Ach request timed out on channel '%s'.",
+			mAchChanName.c_str());
+	}
+	return mAchData;
+}
+
 
 template <class DataClass>
 const DataClass& AchROSBridge<DataClass>::getState(bool update)

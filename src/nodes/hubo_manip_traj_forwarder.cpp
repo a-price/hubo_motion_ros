@@ -19,11 +19,11 @@
  * without modification, are permitted provided that the following
  * conditions are met:
  * * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
+ *   notice, this list of conditions and the following disclaimer.
  * * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following
- * disclaimer in the documentation and/or other materials provided
- * with the distribution.
+ *   copyright notice, this list of conditions and the following
+ *   disclaimer in the documentation and/or other materials provided
+ *   with the distribution.
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
  * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -52,6 +52,8 @@
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
+#define CONVERGENCE_THRESHOLD 0.075
+
 class HuboManipulationAction
 {
 protected:
@@ -63,17 +65,17 @@ protected:
 	std::string action_name_j_;
 	std::string action_name_p_;
 
-	// create messages that are used to published feedback/result
+	// create messages that are used to publish feedback/result
 	hubo_motion_ros::ExecutePoseTrajectoryFeedback feedback_p_;
 	hubo_motion_ros::ExecutePoseTrajectoryResult result_p_;
 
 	hubo_motion_ros::ExecuteJointTrajectoryFeedback feedback_j_;
 	hubo_motion_ros::ExecuteJointTrajectoryResult result_j_;
 
+	AchROSBridge<hubo_manip_state> stateChannel;
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
 	AchROSBridge<hubo_manip_traj> trajChannel;
 	AchROSBridge<hubo_manip_param> paramChannel;
-	AchROSBridge<hubo_manip_state> stateChannel;
 
 public:
 
@@ -117,9 +119,11 @@ public:
 
 			size_t armIdx = goal->ArmIndex[armIter];
 
+			cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 			cmd.m_mode[armIdx] = manip_mode_t::MC_TRAJ;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
+			cmd.interrupt[armIdx] = false;
 
 			std::map<std::string, int>::const_iterator mapIter;
 			// Iterate through all joints in each step
@@ -151,7 +155,7 @@ public:
 
 		// wait for completion, with preemption
 		hubo_manip_state_t state;
-		ros::Rate rate(10); // 10 hz
+		//ros::Rate rate(10); // 10 hz
 		while (!preempted && !completed && !error && ros::ok())
 		{
 			// check that preempt has not been requested by the client
@@ -161,19 +165,19 @@ public:
 				// set the action state to preempted
 				asp_.setPreempted();
 				preempted = true;
-				break;
+				return;
 			}
 
 			// read the state channel
 			completed = true;
-			state = stateChannel.getState(true);
+			state = stateChannel.waitState(50);
 			for (int arm = 0; arm < NUM_ARMS; arm++)
 			{
 				feedback_j_.CommandState = state.mode_state[arm];
 				feedback_j_.GraspState = state.grasp_state[arm];
 				feedback_j_.ErrorState = state.error[arm];
-				// TODO: how do we end this?
-				//completed = completed && state.grasp_state[arm] == manip_grasp_t::MC_GRASP_AT_END;
+
+				completed = completed && state.mode_state[arm] == manip_mode_t::MC_READY;
 				error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 			}
 
@@ -182,44 +186,119 @@ public:
 		}
 
 		// return the result
-		result_j_.Success = (completed && !error) ? 1 : 0;
+		result_j_.Success = (completed && !error && !preempted) ? 1 : 0;
 		asj_.setSucceeded(result_j_);
 	}
 
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
 	{
-		bool success;
-
+		bool preempted = false, error = false, completed = false;
+		result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
 
-
-		// publish info to the console for the user
-		//ROS_INFO("%s: Executing, creating fibonacci sequence of order %i with seeds %i, %i", action_name_.c_str(), goal->order, feedback_.sequence[0], feedback_.sequence[1]);
-
-		// start executing the action
-		for (int armIdx = 1; armIdx <= goal->ArmIndex.size(); armIdx++)
+		// Iterate through all poses provided
+		ROS_INFO("%i steps to complete.", goal->PoseTargets[0].poses.size());
+		for (int poseIter = 0; poseIter < goal->PoseTargets[0].poses.size(); poseIter++)
 		{
-			// check that preempt has not been requested by the client
-			if (asp_.isPreemptRequested() || !ros::ok())
+			preempted = false, error = false, completed = false;
+			ROS_INFO("Pose # %i", poseIter);
+
+			// Build cmd packet by iterating through all arms provided
+			for (int armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
 			{
-				ROS_INFO("%s: Preempted", action_name_p_.c_str());
-				// set the action state to preempted
-				asp_.setPreempted();
-				success = false;
-				return;
+				size_t armIdx = goal->ArmIndex[armIter];
+				if (armIdx > (size_t)NUM_ARMS) {continue;}
+
+				cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
+				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+				cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
+				cmd.interrupt[armIdx] = true;
+				cmd.goalID[armIdx] = poseIter;
+
+				hubo_manip_pose_t pose;
+				const geometry_msgs::Pose goalPose = goal->PoseTargets[armIter].poses[poseIter];
+				pose.x = goalPose.position.x;
+				pose.y = goalPose.position.y;
+				pose.z = goalPose.position.z;
+				pose.i = goalPose.orientation.x;
+				pose.j = goalPose.orientation.y;
+				pose.k = goalPose.orientation.z;
+				pose.w = goalPose.orientation.w;
+
+				cmd.pose[armIdx] = pose;
 			}
-			// publish the feedback
-			asp_.publishFeedback(feedback_p_);
+
+
+			// NB: the feedback publishing must be nested here, since the protocol only defines one pose at a time.
+			// write to channel
+			cmdChannel.pushState(cmd);
+
+			// wait for completion, with preemption
+			hubo_manip_state_t state;
+			//ros::Rate rate(10); // 10 hz
+			while (!preempted && !completed && ros::ok())
+			{
+				// check that preempt has not been requested by the client
+				if (asp_.isPreemptRequested())
+				{
+					ROS_INFO("%s: Preempted", action_name_p_.c_str());
+					// set the action state to preempted
+					asp_.setPreempted();
+					preempted = true;
+					return;
+				}
+
+				// read the state channel
+				completed = true;
+				state = stateChannel.waitState(250);
+				for (int arm = 0; arm < NUM_ARMS; arm++)
+				{
+					feedback_p_.CommandState = state.mode_state[arm];
+					feedback_p_.GraspState = state.grasp_state[arm];
+					feedback_p_.ErrorState = state.error[arm];
+
+					// Data is from an old command
+					if (state.goalID[arm] != poseIter)
+					{
+						completed = false;
+						error = false;
+						ROS_ERROR("Got old cmd ID: %i", state.goalID[arm]);
+						continue;
+					}
+
+					completed = completed && (state.mode_state[arm] == manip_mode_t::MC_READY);
+					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
+					if (error)
+					{
+						ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
+					}
+					if (completed)
+					{
+						ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
+					}
+					else
+					{
+						ROS_INFO("Not finished yet...");
+					}
+				}
+
+				// publish the feedback
+				asp_.publishFeedback(feedback_p_);
+			}
 		}
 
-		if (success)
+		// return the result
+		if (error && completed)
 		{
-			//result_.sequence = feedback_.sequence;
-			ROS_INFO("%s: Succeeded", action_name_p_.c_str());
-			// set the action state to succeeded
-			result_p_.Success = 1;
-			asp_.setSucceeded(result_p_);
+			ROS_WARN("Completed Goal with Error");
 		}
+		else
+		{
+			ROS_INFO("Completed Goal.");
+		}
+		result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
+		asp_.setSucceeded(result_p_);
 	}
 };
 

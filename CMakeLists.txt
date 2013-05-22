@@ -103,9 +103,20 @@ foreach(node_src_file ${nodes_source})
     message(STATUS "Adding ROS Node ${node_base}" )
     add_executable(${node_base} ${node_src_file})
     target_link_libraries(${node_base} ${PROJECT_NAME})
-    #add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
+    add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
     set_target_properties(${node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 endforeach(node_src_file)
+
+# Build system tests
+message(STATUS "\n-- ROS TESTING NODES: ")
+foreach(test_node_src_file ${system_tests_source})
+    get_filename_component(test_node_base ${test_node_src_file} NAME_WE)
+    message(STATUS "Adding ROS Node ${test_node_base}" )
+    add_executable(${test_node_base} ${test_node_src_file})
+    target_link_libraries(${test_node_base} ${PROJECT_NAME})
+    add_dependencies(${test_node_base} ${PROJECT_NAME}_gencpp)
+    set_target_properties(${test_node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
+endforeach(test_node_src_file)
 
 #############
 ## Install ##

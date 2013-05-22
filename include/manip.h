@@ -38,9 +38,11 @@
 #include <Hubo_Control.h>
 
 // Trajectory upper bounds
+#ifndef MAX_TRAJ_SIZE     // placeholder until install is updated
 #define TRAJ_FREQ_HZ 200
 #define MAX_TRAJ_TIME 10
 #define MAX_TRAJ_SIZE MAX_TRAJ_TIME*TRAJ_FREQ_HZ
+#endif
 
 #define CHAN_HUBO_MANIP_CMD "manip-cmd"
 #define CHAN_HUBO_MANIP_TRAJ "manip-traj"
@@ -98,6 +100,7 @@ typedef enum {
 /**
  * \union manip_pose_t
  * \brief Contains all pose parameters to pass to manipulation daemon for ik-control
+ *
  * This structure is defined as a union, so one can access the stored values like
  * myPose.data[1] or myPose.y, and they will refer to the same chunk of memory.
  * Names are provided for both quaternion and Euler angles.
@@ -123,37 +126,30 @@ typedef union
 	};
 } hubo_manip_pose_t;
 
-// there's nothing about whether it's done, as near as I can tell...
+
 typedef struct hubo_manip_state {
-    
-    manip_mode_t mode_state[NUM_ARMS];      // Current state of the operational command
-    manip_grasp_t grasp_state[NUM_ARMS];  // Current state of the grasp command
-    
-    manip_error_t error[NUM_ARMS];
+
+	uint32_t goalID[NUM_ARMS];
+    manip_mode_t mode_state[NUM_ARMS];    ///< Current state of the operational mode. Changes to manip_mode_t::MC_READY when path finished.
+    manip_grasp_t grasp_state[NUM_ARMS];  ///< Current state of the grasp command
+    manip_error_t error[NUM_ARMS];        ///< Current error state of the daemon
     
 } hubo_manip_state_t;
 
 
 typedef struct hubo_manip_cmd {
     
-    manip_mode_t m_mode[NUM_ARMS];
-    manip_ctrl_t m_ctrl[NUM_ARMS];
-    manip_grasp_t m_grasp[NUM_ARMS];
-    bool interrupt[NUM_ARMS];
+	uint32_t goalID[NUM_ARMS];
+    manip_mode_t m_mode[NUM_ARMS];        ///< Defines what type of manipulation to execute: trajectory or pose
+    manip_ctrl_t m_ctrl[NUM_ARMS];        ///< Defines the type of compliance to use
+    manip_grasp_t m_grasp[NUM_ARMS];      ///< Defines at what point to perform a grasp
+    bool interrupt[NUM_ARMS];             ///< Interrupts the specified arm's execution
     
-    hubo_manip_pose_t pose[NUM_ARMS];
-//    double translation[NUM_ARMS][3];   // Use translation[RIGHT][0] to specify x for the right-side end effector
-                                // translation[LEFT][0] -> left arm's x
-                                // translation[LEFT][1] -> left arm's y
-                                // translation[LEFT][2] -> left arm's z
-    
-//    double quaternion[NUM_ARMS][4];    // w, x, y, z
-    
-//    double eulerAngles[NUM_ARMS][3];   // Use eulerAngles[LEFT][0] to specify x-axis rotation for left-side end effector
-                                // eulerAngles[RIGHT][0] -> right arm's roll
-                                // eulerAngles[RIGHT][1] -> right arm's pitch
-                                // eulerAngles[RIGHT][2] -> right arm's yaw
-    // Euler Angles are applied in the following order: X1, Y2, Z3
+    hubo_manip_pose_t pose[NUM_ARMS];     ///< Defines a pose target for the arm. Ignored if m_mode == manip_mode_t::MC_TRAJ
+	// eulerAngles[RIGHT][0] -> right arm's roll
+	// eulerAngles[RIGHT][1] -> right arm's pitch
+	// eulerAngles[RIGHT][2] -> right arm's yaw
+	// Euler Angles are applied in the following order: X1, Y2, Z3
     
     double convergeNorm;
     
@@ -182,8 +178,6 @@ typedef struct hubo_manip_param {
 
 typedef struct hubo_manip_traj {
     
-	// for a single trajectory, am I supposed to send 1 or many of these?
-	// parent_id suggests to send several, but MAX_TRAJ_SIZE suggests send one big one...
     unsigned int id;
     manip_traj_chain_t chain;
     unsigned int parent_id;
