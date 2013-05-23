@@ -50,33 +50,110 @@
 #include <ach.h>
 #include <string>
 
+#include <mutex>
+#include <csignal> // TODO: Handle kill signals when listening for ach_o_wait
+#include <cstdlib>
+
 #include <ros/ros.h>
+
+class AchChannel
+{
+public:
+	std::mutex mAchLock;
+	ach_channel_t mAchChan;
+	std::string mAchChanName;
+
+	ach_status_t cancelRequest()
+	{
+		ach_cancel_attr_t cancel_attrs;
+		ach_cancel_attr_init(&cancel_attrs);
+
+		ach_status_t r;
+		r = ach_cancel(&mAchChan, &cancel_attrs);
+		return r;
+	}
+};
+
+volatile bool shutdownRequested = false;
+
+std::set<AchChannel*> lockedChannels;
+
+void ach_safe_shutdown(int parameter)
+{
+	fprintf(stderr, "Requested Shutdown.\n");
+	bool notBusy = true;
+	for(std::set<AchChannel*>::iterator i = lockedChannels.begin();
+		i != lockedChannels.end(); i++)
+	{
+		AchChannel* channel = *i;
+		notBusy = notBusy && channel->mAchLock.try_lock();
+	}
+
+	if (notBusy)
+	{
+		fprintf(stderr, "Shutting down node.\n");
+		shutdownRequested = true;
+		//mAchLocked.unlock();
+		ros::shutdown();
+	}
+	else if (shutdownRequested)
+	{
+		fprintf(stderr, "Hard Exit.\n");
+		exit(0);
+	}
+	else
+	{
+		fprintf(stderr, "Busy, setting wait%i.\n", ACH_CANCELED);
+		for(std::set<AchChannel*>::iterator i = lockedChannels.begin();
+			i != lockedChannels.end(); i++)
+		{
+			AchChannel* channel = *i;
+			channel->cancelRequest();
+		}
+		shutdownRequested = true;
+	}
+}
+
+#define ACH_ATOMIC_ACCESS(f) \
+	this->mAchChannel.mAchLock.lock(); \
+	lockedChannels.insert(&this->mAchChannel); \
+	{f} \
+	lockedChannels.erase(&this->mAchChannel); \
+	this->mAchChannel.mAchLock.unlock(); fprintf(stderr, "unlocked."); \
+	if(shutdownRequested){ach_safe_shutdown(0);}
 
 template <class DataClass>
 class AchROSBridge
 {
 public:
+	//static std::mutex mAchLocked;
+	//static bool shutdownRequested = false;
+
 	/// Constructor
 	AchROSBridge(std::string chanName);
 
 	/// Destructor
-	~AchROSBridge();
+	virtual ~AchROSBridge();
 
 	/// Writes new data to the ach channel
-	ach_status_t pushState(const DataClass& data);
+	virtual ach_status_t pushState(const DataClass& data);
 
 	/// Reads new data from the ach channel
-	ach_status_t updateState();
+	virtual ach_status_t updateState();
 
 	/// Waits for new data from the ach channel
-	const DataClass&  waitState(const uint32_t millis);
+	virtual const DataClass&  waitState(const uint32_t millis);
 
 	/// Returns the data with an option to update first
-	const DataClass& getState(bool update = true);
+	virtual const DataClass& getState(bool update = true);
+
+	/// Cancels any put or get commands to the channel.
+	virtual ach_status_t cancelRequest();
 
 protected:
-	ach_channel_t mAchChan;
-	std::string mAchChanName;
+//	ach_channel_t mAchChan;
+//	std::string mAchChanName;
+	AchChannel mAchChannel;
 	DataClass mAchData;
 };
 
@@ -84,43 +161,52 @@ protected:
 template <class DataClass>
 AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 {
+	// Set up signal handler so we don't bail in the middle of an ach read/write
+	signal(SIGINT, ach_safe_shutdown);
+	shutdownRequested = false;
+
 	if (chanName == "")
 	{
 		ROS_ERROR("Invalid Ach channel name specified.");
 	}
 
-	mAchChanName = chanName;
+	mAchChannel.mAchChanName = chanName;
 
 	ach_status_t r = ACH_OK;
-	r = ach_create(mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
+	r = ach_create(mAchChannel.mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
 
 	if (r == ACH_EEXIST)
 	{
 		ROS_INFO("Found existing Ach channel '%s'.",
-			mAchChanName.c_str());
+			mAchChannel.mAchChanName.c_str());
 	}
 	else if( ACH_OK != r )
 	{
 		ROS_ERROR("Unable to create Ach channel '%s', error: (%d) %s",
-			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
-
-	r = ach_chmod(&mAchChan, 666);
-
-	if( ACH_OK != r )
+	else
 	{
-		ROS_ERROR("Unable to modify Ach channel '%s', error: (%d) %s",
-			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+		ROS_INFO("Created new Ach channel '%s'.",
+			mAchChannel.mAchChanName.c_str());
 	}
+
+	//r = ach_chmod(&mAchChan, 666);
+
+//	if( ACH_OK != r )
+//	{
+//		ROS_WARN("Unable to modify Ach channel '%s', error: (%d) %s",
+//			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+//	}
 
 
 	memset(&mAchData, 0, sizeof(mAchData));
-	r = ach_open( &mAchChan, mAchChanName.c_str(), NULL );
+	r = ach_open( &mAchChannel.mAchChan, mAchChannel.mAchChanName.c_str(), NULL );
 
 	if( ACH_OK != r )
 	{
 		ROS_ERROR("Unable to open Ach channel '%s', error: (%d) %s",
-			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
 
 }
@@ -129,7 +215,7 @@ template <class DataClass>
 AchROSBridge<DataClass>::~AchROSBridge()
 {
 	ach_status_t r = ACH_OK;
-	r = ach_close(&mAchChan);
+	r = ach_close(&mAchChannel.mAchChan);
 	//r = ach_unlink(mAchChanName.c_str());
 }
 
@@ -140,12 +226,12 @@ ach_status_t AchROSBridge<DataClass>::pushState(const DataClass& data)
 	ach_status_t r = ACH_OK;
 
 	mAchData = data;
-	r = ach_put(&mAchChan, &mAchData, sizeof(mAchData));
+	ACH_ATOMIC_ACCESS(r = ach_put(&mAchChannel.mAchChan, &mAchData, sizeof(mAchData)););
 
 	if( ACH_OK != r )
 	{
-		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
-			mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+		ROS_ERROR("Problem writing Ach channel '%s', error: (%d) %s",
+			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
 
 	return r;
@@ -156,20 +242,24 @@ ach_status_t AchROSBridge<DataClass>::updateState()
 {
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	r = ach_get( &mAchChan, &mAchData, sizeof(mAchData), &fs, NULL, ACH_O_LAST );
+	ACH_ATOMIC_ACCESS(r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, NULL, ACH_O_LAST ););
 
 	if (ACH_STALE_FRAMES != r)
 	{
 		if (fs != sizeof(mAchData))
 		{
 			ROS_ERROR("Problem reading Ach channel '%s'; data size: %zi != bytes read: %zi. Please check your data struct definitions.",
-				mAchChanName.c_str(),sizeof(mAchData),fs);
+				mAchChannel.mAchChanName.c_str(),sizeof(mAchData),fs);
 		}
 
-		if(ACH_OK != r)
+		if (ACH_MISSED_FRAME == r)
+		{
+			// Potentially do something here, but it's not currently a problem...
+		}
+		else if(ACH_OK != r)
 		{
 			ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
-				mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
+				mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 		}
 	}
 
@@ -184,12 +274,12 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 	waitTime.tv_nsec += millis * 1000 * 1000;
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	r = ach_get( &mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST );
+	ACH_ATOMIC_ACCESS(r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST ););
 
 	if (r == ACH_TIMEOUT)
 	{
 		ROS_INFO("Ach request timed out on channel '%s'.",
-			mAchChanName.c_str());
+			mAchChannel.mAchChanName.c_str());
 	}
 	return mAchData;
 }
@@ -204,6 +294,15 @@ const DataClass& AchROSBridge<DataClass>::getState(bool update)
 	}
 
 	return mAchData;
+}
+
+template <class DataClass>
+ach_status_t AchROSBridge<DataClass>::cancelRequest()
+{
+	ach_status_t r = ACH_OK;
+	r = mAchChannel.cancelRequest();
+
+	return r;
 }
 
 #endif /* ACHROSBRIDGE_H_ */

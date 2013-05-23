@@ -26,7 +26,7 @@
  * \class HuboStateAchBridge
  * \brief Provides ROS representation of Hubo's state
  */
-class HuboStateAchBridge : AchROSBridge<hubo_state>
+class HuboStateAchBridge : public AchROSBridge<hubo_state>
 {
 public:
 	/// Constructor
@@ -34,7 +34,6 @@ public:
 
 	/// Destructor
 	~HuboStateAchBridge();
-	hubo_state getState(bool update = true);
 
 	sensor_msgs::JointState getJointState(bool update = true);
 	sensor_msgs::Imu getIMUState(bool update = true);

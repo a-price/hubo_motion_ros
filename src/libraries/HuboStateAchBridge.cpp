@@ -16,15 +16,6 @@ HuboStateAchBridge::~HuboStateAchBridge()
 {
 }
 
-hubo_state HuboStateAchBridge::getState(bool update)
-{
-	if (update)
-	{
-		updateState();
-	}
-	return ((hubo_state)mAchData);
-}
-
 sensor_msgs::JointState HuboStateAchBridge::getJointState(bool update)
 {
 	if (update)

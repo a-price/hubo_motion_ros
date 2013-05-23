@@ -53,6 +53,7 @@
 #include "hubo_motion_ros/AchROSBridge.h"
 
 #define CONVERGENCE_THRESHOLD 0.075
+#define IMMOBILITY_THRESHOLD 0.01
 
 class HuboManipulationAction
 {
@@ -104,6 +105,10 @@ public:
 		hubo_manip_cmd_t cmd;
 		hubo_manip_traj_t traj;
 
+		// Set global properties
+		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+
 		// Iterate through all arms provided
 		for (int armIter = 0; armIter < std::min(goal->ArmIndex.size(),(size_t)NUM_ARMS); armIter++)
 		{
@@ -117,13 +122,15 @@ public:
 				return;
 			}
 
+			// Get the actual arm index, not the position in the array of indices
 			size_t armIdx = goal->ArmIndex[armIter];
 
-			cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+			// Set arm properties
 			cmd.m_mode[armIdx] = manip_mode_t::MC_TRAJ;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 			cmd.interrupt[armIdx] = false;
+			cmd.goalID[armIdx] = armIter+1;
 
 			std::map<std::string, int>::const_iterator mapIter;
 			// Iterate through all joints in each step
@@ -177,7 +184,9 @@ public:
 				feedback_j_.GraspState = state.grasp_state[arm];
 				feedback_j_.ErrorState = state.error[arm];
 
-				completed = completed && state.mode_state[arm] == manip_mode_t::MC_READY;
+				completed = completed &&
+						((state.mode_state[arm] == manip_mode_t::MC_READY) ||
+						(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
 				error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 			}
 
@@ -196,8 +205,12 @@ public:
 		result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
 
+		// Set global properties
+		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+
 		// Iterate through all poses provided
-		ROS_INFO("%i steps to complete.", goal->PoseTargets[0].poses.size());
+		ROS_INFO("%lu steps to complete.", goal->PoseTargets[0].poses.size());
 		for (int poseIter = 0; poseIter < goal->PoseTargets[0].poses.size(); poseIter++)
 		{
 			preempted = false, error = false, completed = false;
@@ -209,12 +222,11 @@ public:
 				size_t armIdx = goal->ArmIndex[armIter];
 				if (armIdx > (size_t)NUM_ARMS) {continue;}
 
-				cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
 				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 				cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 				cmd.interrupt[armIdx] = true;
-				cmd.goalID[armIdx] = poseIter;
+				cmd.goalID[armIdx] = poseIter+1;
 
 				hubo_manip_pose_t pose;
 				const geometry_msgs::Pose goalPose = goal->PoseTargets[armIter].poses[poseIter];
@@ -259,15 +271,17 @@ public:
 					feedback_p_.ErrorState = state.error[arm];
 
 					// Data is from an old command
-					if (state.goalID[arm] != poseIter)
+					if (state.goalID[arm] != poseIter+1)
 					{
 						completed = false;
 						error = false;
-						ROS_ERROR("Got old cmd ID: %i", state.goalID[arm]);
+						ROS_WARN("Got old cmd ID: %i", state.goalID[arm]);
 						continue;
 					}
 
-					completed = completed && (state.mode_state[arm] == manip_mode_t::MC_READY);
+					completed = completed &&
+								((state.mode_state[arm] == manip_mode_t::MC_READY) ||
+								(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
 					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 					if (error)
 					{
