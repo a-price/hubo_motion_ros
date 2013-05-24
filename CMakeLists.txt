@@ -70,7 +70,7 @@ catkin_package(
  message_runtime genmsg actionlib actionlib_msgs
  std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs
  tf tf_conversions eigen_conversions rviz class_loader
-    DEPENDS ach QtCore QtGui
+    DEPENDS ach rt QtCore QtGui
 )
 
 ## Your package locations should be listed before other locations
@@ -85,6 +85,7 @@ link_libraries(${catkin_LIBRARIES})
 
 ## Specify additional locations of header files
 link_libraries(ach)
+link_libraries(rt)
 
 # Collect the source, node and test files
 file(GLOB lib_source "src/libraries/*.cpp")
