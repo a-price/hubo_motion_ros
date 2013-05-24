@@ -65,11 +65,12 @@ public:
 
 	ach_status_t cancelRequest()
 	{
-		ach_cancel_attr_t cancel_attrs;
-		ach_cancel_attr_init(&cancel_attrs);
+        ach_status_t r = ACH_OK;
 
-		ach_status_t r;
-		r = ach_cancel(&mAchChan, &cancel_attrs);
+//		ach_cancel_attr_t cancel_attrs;
+//		ach_cancel_attr_init(&cancel_attrs);
+//		r = ach_cancel(&mAchChan, &cancel_attrs);
+
 		return r;
 	}
 };
@@ -103,7 +104,7 @@ void ach_safe_shutdown(int parameter)
 	}
 	else
 	{
-		fprintf(stderr, "Busy, setting wait%i.\n", ACH_CANCELED);
+        fprintf(stderr, "Busy, setting wait.\n");
 		for(std::set<AchChannel*>::iterator i = lockedChannels.begin();
 			i != lockedChannels.end(); i++)
 		{
@@ -287,6 +288,11 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
 			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
+    else
+    {
+        ROS_INFO("New ach data on channel '%s'.",
+            mAchChannel.mAchChanName.c_str());
+    }
 	return mAchData;
 }
 
