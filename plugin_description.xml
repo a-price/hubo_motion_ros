@@ -1,0 +1,16 @@
+<library path="${prefix}/lib/libhubo_motion_ros_rviz">
+  <class name="AchNetworkWidget"
+         type="hubo_motion_ros::AchNetworkWidget"
+         base_class_type="QWidget">
+    <description>
+      A widget for managing ach connections
+    </description>
+  </class>
+  <class name="HuboMotionPanel"
+         type="hubo_motion_ros::HuboMotionPanel"
+         base_class_type="rviz::Panel">
+    <description>
+      RViz monitor for hubo-motion-rt daemons
+    </description>
+  </class>
+</library>

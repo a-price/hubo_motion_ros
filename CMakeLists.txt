@@ -3,13 +3,19 @@ project(hubo_motion_ros)
 set(BUILD_FLAGS "-std=c++0x")
 
 ## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS roscpp 
+find_package(catkin REQUIRED COMPONENTS roscpp
  message_generation genmsg actionlib actionlib_msgs
  std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs
- tf tf_conversions eigen_conversions)
+ tf tf_conversions eigen_conversions rviz class_loader)
+
+#find_package(catkin REQUIRED )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+
+find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
+include(${QT_USE_FILE})
+link_libraries(${QT_LIBRARIES})
 
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
@@ -63,8 +69,8 @@ catkin_package(
 	CATKIN_DEPENDS roscpp 
  message_runtime genmsg actionlib actionlib_msgs
  std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs
- tf tf_conversions eigen_conversions
-	DEPENDS ach
+ tf tf_conversions eigen_conversions rviz class_loader
+    DEPENDS ach QtCore QtGui
 )
 
 ## Your package locations should be listed before other locations
@@ -75,13 +81,16 @@ link_libraries(${catkin_LIBRARIES})
 ## Build ##
 ###########
 
+#add_definitions(-DQT_NO_KEYWORDS)
+
 ## Specify additional locations of header files
 link_libraries(ach)
-
 
 # Collect the source, node and test files
 file(GLOB lib_source "src/libraries/*.cpp")
 list(SORT lib_source)
+file(GLOB plugins_source "src/plugins/*.cpp")
+list(SORT plugins_source)
 file(GLOB nodes_source "src/nodes/*.cpp")
 list(SORT nodes_source)
 file(GLOB unit_tests_source "src/tests/unit/*.cpp")
@@ -89,10 +98,16 @@ list(SORT unit_tests_source)
 file(GLOB system_tests_source "src/tests/system/*.cpp")
 list(SORT system_tests_source)
 
+file(GLOB include_source "include/hubo_motion_ros/*.h")
+qt4_wrap_cpp(MOC_FILES ${include_source})
+
+message(STATUS "${MOC_FILES}")
+
 ## Declare a cpp library
 add_library(${PROJECT_NAME} SHARED ${lib_source})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
-message(STATUS "Adding action ${lib_source}" )
+add_library(${PROJECT_NAME}_rviz SHARED ${plugins_source} ${include_source} ${MOC_FILES})
+set_target_properties(${PROJECT_NAME}_rviz PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 ## Allow Testing
 enable_testing()
 
