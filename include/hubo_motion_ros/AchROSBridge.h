@@ -119,8 +119,8 @@ void ach_safe_shutdown(int parameter)
 	lockedChannels.insert(&this->mAchChannel); \
 	{f} \
 	lockedChannels.erase(&this->mAchChannel); \
-	this->mAchChannel.mAchLock.unlock(); fprintf(stderr, "unlocked."); \
-	if(shutdownRequested){ach_safe_shutdown(0);}
+	this->mAchChannel.mAchLock.unlock(); \
+	if(shutdownRequested){ros::shutdown();}
 
 template <class DataClass>
 class AchROSBridge
@@ -269,6 +269,7 @@ ach_status_t AchROSBridge<DataClass>::updateState()
 template <class DataClass>
 const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 {
+	ROS_INFO("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
 	struct timespec waitTime;
 	clock_gettime(ACH_DEFAULT_CLOCK, &waitTime);
 	waitTime.tv_nsec += millis * 1000 * 1000;
@@ -280,6 +281,11 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 	{
 		ROS_INFO("Ach request timed out on channel '%s'.",
 			mAchChannel.mAchChanName.c_str());
+	}
+	else if (r != ACH_OK)
+	{
+		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
 	return mAchData;
 }
