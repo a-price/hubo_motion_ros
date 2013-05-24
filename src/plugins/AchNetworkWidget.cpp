@@ -250,7 +250,7 @@ void AchNetworkWidget::handleDead(int exitStatus)
 void AchNetworkWidget::achdDisconnectSlot()
 {
     for(int i=0; i<achds.size(); i++)
-        achds[0]->kill();
+        achds[i]->kill();
 }
 
 void AchNetworkWidget::setNetworkName(QString name)
