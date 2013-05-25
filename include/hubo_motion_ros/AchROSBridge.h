@@ -174,7 +174,7 @@ AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 	mAchChannel.mAchChanName = chanName;
 
 	ach_status_t r = ACH_OK;
-	r = ach_create(mAchChannel.mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
+	//r = ach_create(mAchChannel.mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
 
 	if (r == ACH_EEXIST)
 	{
@@ -272,19 +272,32 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 {
 	ROS_INFO("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
 	struct timespec waitTime;
-	clock_gettime(ACH_DEFAULT_CLOCK, &waitTime);
-	waitTime.tv_nsec += millis * 1000 * 1000;
+	if( clock_gettime(ACH_DEFAULT_CLOCK, &waitTime) )
+	{
+		perror("clock_gettime");
+		exit(EXIT_FAILURE);
+	}
+	uint64_t newNanos =  waitTime.tv_nsec + (millis * 1000000);
+	waitTime.tv_sec += newNanos / 1000000000;
+	waitTime.tv_nsec = newNanos % 1000000000;
+
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	ACH_ATOMIC_ACCESS(r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST ););
+	//ACH_ATOMIC_ACCESS(r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST ););
+	r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST );
 
-	if (r == ACH_TIMEOUT)
+	if (ACH_TIMEOUT == r)
 	{
 		ROS_INFO("Ach request timed out on channel '%s'.",
 			mAchChannel.mAchChanName.c_str());
 	}
+	else if (ACH_MISSED_FRAME == r)
+	{
+		// Potentially do something here, but it's not currently a problem...
+	}
 	else if (r != ACH_OK)
 	{
+		perror("ach_get");
 		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
 			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
