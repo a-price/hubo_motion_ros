@@ -25,44 +25,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-geometry_msgs::Pose generateGCP(tf::StampedTransform objectPose, unsigned int objectID = 0)
-{
-	geometry_msgs::Pose gcp;
-	Eigen::Isometry3f eObj = Eigen::Isometry3f::Identity(),
-			eLocalGcp = Eigen::Isometry3f::Identity(),
-			eWorldGcp = Eigen::Isometry3f::Identity();
-	//if (objectID == 0) // cylinder
-	{
-		const double radius = 0.04;
-		const double graspHeight = 0.04;
-		const double graspAngle = -3*M_PI/4;
-
-		eLocalGcp.translate(Eigen::Vector3f(radius*cos(graspAngle),radius*sin(graspAngle),graspHeight));
-		eLocalGcp.rotate(Eigen::AngleAxisf(M_PI+graspAngle, Eigen::Vector3f::UnitZ()));
-
-		//eObj.translation() = Eigen::Map<Eigen::Vector3f>((float*)objectPose.getOrigin().m_floats);
-		eObj.translation().x() = objectPose.getOrigin().x();
-		eObj.translation().y() = objectPose.getOrigin().y();
-		eObj.translation().z() = objectPose.getOrigin().z();
-
-		eWorldGcp = eObj * eLocalGcp;
-		//eWorldGcp = eLocalGcp;
-
-		gcp.position.x = eWorldGcp.translation().x();
-		gcp.position.y = eWorldGcp.translation().y();
-		gcp.position.z = eWorldGcp.translation().z();
-
-		Eigen::Quaternionf q(eWorldGcp.rotation());
-		gcp.orientation.w = q.w();
-		gcp.orientation.x = q.x();
-		gcp.orientation.y = q.y();
-		gcp.orientation.z = q.z();
-	}
-
-
-	return gcp;
-}
-
 bool requestPose(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
@@ -104,9 +66,6 @@ int main(int argc, char** argv)
 	tf::TransformListener listener;
 	tf::TransformBroadcaster tfBroadcaster;
 
-
-	//pose_client = nh.serviceClient<hubo_drc_vision::SetHuboObjectPose>("/hubo/set_object");
-
 	std::string text;
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArray;
@@ -126,14 +85,6 @@ int main(int argc, char** argv)
 			ROS_INFO("Got transform!");
 
 			tf::poseTFToMsg(tf::Transform(tTorsoObject), gcpPose);
-			//gcpPose = generateGCP(tTorsoObject, 0);
-
-
-			// publish gcp
-			//tf::poseMsgToTF(gcpPose, gcpTrans);
-			//tf::transformMsgToTF(gcpPose, gcpTrans);
-			//tfBroadcaster.sendTransform(tf::StampedTransform(
-			//		gcpTrans, ros::Time::now(), "/Body_Torso", "/cylinder_gcp"));
 
 			pArray.header.frame_id = "/Body_Torso";
 			pArray.poses.push_back(gcpPose);

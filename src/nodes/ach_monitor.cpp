@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 
 	ros::Rate r(1);
 
-	while(!shutdownRequested && ros::ok())
+	while(ros::ok())
 	{
 		fprintf(stderr, "a.");
 		stateChannel.waitState(1000);

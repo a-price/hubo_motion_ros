@@ -43,6 +43,7 @@
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
+#include <control_msgs/FollowJointTrajectoryAction.h>
 
 #include <hubo.h>
 #include <manip.h>
@@ -318,8 +319,8 @@ public:
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "manip_traj_forwarder");
-	ROS_INFO("Started hubo_manip_traj_forwarder.");
+	ros::init(argc, argv, "hw_trajectory_server");
+	ROS_INFO("Started trajectory_server.");
 
 	HuboManipulationAction hma(ros::this_node::getName());
 	ros::spin();

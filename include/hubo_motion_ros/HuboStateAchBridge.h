@@ -8,17 +8,17 @@
 #ifndef HUBO_STATE_ACH_BRIDGE_H
 #define HUBO_STATE_ACH_BRIDGE_H
 
-#include "hubo_motion_ros/AchROSBridge.h"
-
 #include <hubo.h>
-#include "hubo_motion_ros/hubo_joint_names.h"
+
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
 #include <string>
-#include <stdio.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/Imu.h>
+
+#include "hubo_motion_ros/AchROSBridge.h"
+#include "hubo_motion_ros/hubo_joint_names.h"
 
 #define COM_IMU_INDEX 0
 

@@ -5,7 +5,7 @@ set(BUILD_FLAGS "-std=c++0x")
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS roscpp
  message_generation genmsg actionlib actionlib_msgs
- std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs
+ std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs
  tf tf_conversions eigen_conversions rviz class_loader)
 
 #find_package(catkin REQUIRED )
@@ -68,7 +68,7 @@ catkin_package(
 	LIBRARIES hubo_motion_ros
 	CATKIN_DEPENDS roscpp 
  message_runtime genmsg actionlib actionlib_msgs
- std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs
+ std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs
  tf tf_conversions eigen_conversions rviz class_loader
     DEPENDS ach QtCore QtGui
 )
