@@ -138,6 +138,11 @@ AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 		ROS_ERROR("Unable to open Ach channel '%s', error: (%d) %s",
 			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
+	else
+	{
+		ROS_INFO("Opened Ach channel '%s'.",
+			mAchChannel.mAchChanName.c_str());
+	}
 
 }
 

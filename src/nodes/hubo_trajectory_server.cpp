@@ -79,6 +79,8 @@ protected:
 	AchROSBridge<hubo_manip_traj> trajChannel;
 	AchROSBridge<hubo_manip_param> paramChannel;
 
+	unsigned goalCount;
+
 public:
 
 	HuboManipulationAction(std::string name) :
@@ -93,6 +95,8 @@ public:
 	{
 		asp_.start();
 		asj_.start();
+		goalCount = 1;
+		ROS_INFO("Constructed Server.");
 	}
 
 	~HuboManipulationAction(void)
@@ -109,6 +113,7 @@ public:
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+		goalCount++;
 
 		// Iterate through all arms provided
 		for (int armIter = 0; armIter < std::min(goal->ArmIndex.size(),(size_t)NUM_ARMS); armIter++)
@@ -130,8 +135,8 @@ public:
 			cmd.m_mode[armIdx] = manip_mode_t::MC_TRAJ;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
-			cmd.interrupt[armIdx] = false;
-			cmd.goalID[armIdx] = armIter+1;
+			cmd.interrupt[armIdx] = true;
+			cmd.goalID[armIdx] = goalCount;
 
 			std::map<std::string, int>::const_iterator mapIter;
 			// Iterate through all joints in each step
@@ -169,11 +174,15 @@ public:
 			// check that preempt has not been requested by the client
 			if (asp_.isPreemptRequested())
 			{
-				ROS_INFO("%s: Preempted", action_name_j_.c_str());
+				ROS_WARN("%s: Preempted", action_name_j_.c_str());
 				// set the action state to preempted
 				asp_.setPreempted();
 				preempted = true;
 				return;
+			}
+			else if (asp_.isNewGoalAvailable())
+			{
+				ROS_WARN("New Goal available.");
 			}
 
 			// read the state channel
@@ -206,6 +215,8 @@ public:
 		result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
 
+		ros::Time tOut;
+
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
@@ -216,6 +227,8 @@ public:
 		{
 			preempted = false, error = false, completed = false;
 			ROS_INFO("Pose # %i", poseIter);
+			tOut = ros::Time::now() + ros::Duration(10,0);
+			goalCount++;
 
 			// Build cmd packet by iterating through all arms provided
 			for (int armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
@@ -227,7 +240,7 @@ public:
 				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 				cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 				cmd.interrupt[armIdx] = true;
-				cmd.goalID[armIdx] = poseIter+1;
+				cmd.goalID[armIdx] = goalCount;
 
 				hubo_manip_pose_t pose;
 				const geometry_msgs::Pose goalPose = goal->PoseTargets[armIter].poses[poseIter];
@@ -255,11 +268,21 @@ public:
 				// check that preempt has not been requested by the client
 				if (asp_.isPreemptRequested())
 				{
-					ROS_INFO("%s: Preempted", action_name_p_.c_str());
+					ROS_WARN("%s: Preempted", action_name_p_.c_str());
 					// set the action state to preempted
 					asp_.setPreempted();
 					preempted = true;
-					return;
+					break;
+				}
+				if (asp_.isNewGoalAvailable())
+				{
+					ROS_WARN("New Goal available.");
+				}
+				if (tOut < ros::Time::now())
+				{
+					ROS_WARN("Goal Timed out.");
+					error = true;
+					break;
 				}
 
 				// read the state channel
@@ -272,7 +295,7 @@ public:
 					feedback_p_.ErrorState = state.error[arm];
 
 					// Data is from an old command
-					if (state.goalID[arm] != poseIter+1)
+					if (state.goalID[arm] != goalCount)
 					{
 						completed = false;
 						error = false;
@@ -288,13 +311,14 @@ public:
 					{
 						ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
 					}
+
 					if (completed)
 					{
 						ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
 					}
 					else
 					{
-						ROS_INFO("Not finished yet...");
+						ROS_INFO("Not finished yet: arm %i", arm);
 					}
 				}
 
@@ -307,6 +331,10 @@ public:
 		if (error && completed)
 		{
 			ROS_WARN("Completed Goal with Error");
+		}
+		else if (preempted)
+		{
+			ROS_INFO("Goal was preempted.");
 		}
 		else
 		{
