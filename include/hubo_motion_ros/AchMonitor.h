@@ -49,6 +49,7 @@ class AchMonitor : AchROSBridge<DataClass>
 {
 public:
 	AchMonitor(std::string chanName) : AchROSBridge<DataClass>(chanName){};
+	virtual ~AchMonitor();
 
 	/// Reads new data from the ach channel
 	virtual ach_status_t updateState();
@@ -63,12 +64,21 @@ public:
 //{
 //}
 
+
+template <class DataClass>
+AchMonitor<DataClass>::~AchMonitor()
+{
+	ach_status_t r = ACH_OK;
+	r = ach_close(&this->mAchChannel.mAchChan);
+}
+
+
 template <class DataClass>
 ach_status_t AchMonitor<DataClass>::updateState()
 {
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	ACH_ATOMIC_ACCESS(r = ach_get( &this->mAchChannel.mAchChan, &this->mAchData, sizeof(this->mAchData), &fs, NULL, ACH_O_LAST ););
+	r = ach_get( &this->mAchChannel.mAchChan, &this->mAchData, sizeof(this->mAchData), &fs, NULL, ACH_O_LAST );
 
 	if (ACH_STALE_FRAMES != r)
 	{
@@ -105,7 +115,7 @@ const DataClass& AchMonitor<DataClass>::waitState(const uint32_t millis)
 	waitTime.tv_nsec += millis * 1000 * 1000;
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	ACH_ATOMIC_ACCESS(r = ach_get( &this->mAchChannel.mAchChan, &this->mAchData, sizeof(this->mAchData), &fs, &waitTime, ACH_O_WAIT ););
+	r = ach_get( &this->mAchChannel.mAchChan, &this->mAchData, sizeof(this->mAchData), &fs, &waitTime, ACH_O_WAIT );
 
 	if (r == ACH_TIMEOUT)
 	{

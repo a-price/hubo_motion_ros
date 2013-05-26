@@ -21,7 +21,7 @@ typedef struct
 	double x, y, z, error;
 } reachability_t;
 
-double compareT(Eigen::Isometry3d a, Eigen::Isometry3d b,
+double compareT(Eigen::Isometry3d& a, Eigen::Isometry3d& b,
 		Eigen::VectorXd weight)
 {
 	Eigen::Quaterniond qa(a.rotation());

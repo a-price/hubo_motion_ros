@@ -44,6 +44,9 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 
@@ -91,41 +94,57 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 {
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArrayL, pArrayR;
-	geometry_msgs::Pose pose;
+	geometry_msgs::Pose poseA0,poseA1,poseA2,poseB0,poseB1,poseB2;
 
 	pArrayR.header.frame_id = "/world";
 	pArrayL.header.frame_id = "/world";
 
-	pose.position.x = 0.25;
-	pose.position.y = -0.25;
-	pose.position.z = -0.2;
 
-	pose.orientation.w = 1.0;
-	pose.orientation.x = 0.0;
-	pose.orientation.y = 0.0;
-	pose.orientation.z = 0.0;
+	poseA0.position.x = 0.0;
+	poseA0.position.y = -0.45;
+	poseA0.position.z = -0.25;
 
-	pArrayR.poses.push_back(pose);
-	//goal.PoseTargets.push_back(pArrayR);
+	Eigen::Quaterniond q; q.setFromTwoVectors(Eigen::Vector3d::UnitX(), -Eigen::Vector3d::UnitZ());
+	poseA0.orientation.w = q.w();
+	poseA0.orientation.x = q.x();
+	poseA0.orientation.y = q.y();
+	poseA0.orientation.z = q.z();
 
-	pose.position.y = -pose.position.y;
-	pArrayL.poses.push_back(pose);
-	//goal.PoseTargets.push_back(pArrayL);
+	pArrayR.poses.push_back(poseA0);
+	poseB0 = poseA0;
+	poseB0.position.y = -poseB0.position.y;
+	pArrayL.poses.push_back(poseB0);
+
+
+	poseA1.position.x = 0.25;
+	poseA1.position.y = -0.25;
+	poseA1.position.z = -0.2;
+
+	poseA1.orientation.w = 1.0;
+	poseA1.orientation.x = 0.0;
+	poseA1.orientation.y = 0.0;
+	poseA1.orientation.z = 0.0;
+
+	pArrayR.poses.push_back(poseA1);
+	poseB1 = poseA1;
+	poseB1.position.y = -poseB1.position.y;
+	pArrayL.poses.push_back(poseB1);
 
 //	pose.position.y = -pose.position.y;
-	pose.position.x = 0.0;
-	pose.position.y = -0.45;
-	pose.position.z = 0.25;
+	poseA2.position.x = 0.0;
+	poseA2.position.y = -0.45;
+	poseA2.position.z = 0.25;
 
-	pose.orientation.w = 0.7071067811865475;
-	pose.orientation.x = 0.0;
-	pose.orientation.y = 0.0;
-	pose.orientation.z = 0.7071067811865475;
+	q.setFromTwoVectors(Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitZ());
+	poseA2.orientation.w = q.w();
+	poseA2.orientation.x = q.x();
+	poseA2.orientation.y = q.y();
+	poseA2.orientation.z = q.z();
 
-	pArrayR.poses.push_back(pose);
-
-	pose.position.y = -pose.position.y;
-	pArrayL.poses.push_back(pose);
+	pArrayR.poses.push_back(poseA2);
+	poseB2 = poseA2;
+	poseB2.position.y = -poseB2.position.y;
+	pArrayL.poses.push_back(poseB2);
 
 	goal.ArmIndex.push_back(0);
 	goal.ArmIndex.push_back(1);
@@ -210,7 +229,7 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
 		// true causes the client to spin its own thread
-		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("manip_traj_forwarder_pose", true);
+		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("hw_trajectory_server_pose", true);
 
 		ROS_INFO("Waiting for action server to start.");
 		// wait for the action server to start
@@ -222,7 +241,7 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 		ac.sendGoal(goal);
 
 		//wait for the action to return
-		bool finished_before_timeout = ac.waitForResult(ros::Duration(30.0));
+		bool finished_before_timeout = ac.waitForResult(ros::Duration(15.0));
 
 		if (finished_before_timeout)
 		{
