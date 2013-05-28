@@ -1,6 +1,6 @@
 /**
  * \file ros_activity_coordinator.cpp
- * \brief 
+ * \brief ROS node triggering the execution of long-running or supervised processes.
  *
  *  \date April 15, 2013
  *  \author Andrew Price
@@ -15,6 +15,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf_conversions/tf_eigen.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <visualization_msgs/Marker.h>
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
@@ -25,11 +26,14 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+const int ARM = 0;
+
+
 bool requestPose(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
 	// true causes the client to spin its own thread
-	actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("manip_traj_forwarder_pose", true);
+	actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("hw_trajectory_server_pose", true);
 
 	ROS_INFO("Waiting for action server to start.");
 	// wait for the action server to start
@@ -67,7 +71,6 @@ int main(int argc, char** argv)
 	tf::TransformBroadcaster tfBroadcaster;
 
 	std::string text;
-	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArray;
 	geometry_msgs::Pose gcpPose;
 
@@ -86,10 +89,13 @@ int main(int argc, char** argv)
 
 			tf::poseTFToMsg(tf::Transform(tTorsoObject), gcpPose);
 
+			hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
 			pArray.header.frame_id = "/Body_Torso";
 			pArray.poses.push_back(gcpPose);
 			goal.PoseTargets.push_back(pArray);
 			goal.ArmIndex.push_back(0);
+			goal.ClosedStateAtBeginning.push_back(false);
+			goal.ClosedStateAtEnd.push_back(true);
 			requestPose(goal);
 		}
 		catch(tf::TransformException& ex)

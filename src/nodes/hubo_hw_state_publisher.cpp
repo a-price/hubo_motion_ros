@@ -15,6 +15,9 @@
 
 #include "hubo_motion_ros/HuboStateAchBridge.h"
 
+namespace hubo_motion_ros
+{
+
 /**
  * \class HuboHWStatePublisher
  * \brief Handles the retrieval of state information from an Ach channel and publishes it as a series of ROS topics
@@ -98,6 +101,8 @@ protected:
 	HuboStateAchBridge m_HuboState;
 };
 
+} // namespace hubo_motion_ros
+
 int main(int argc, char** argv)
 {
 	ROS_INFO("Started hubo_hw_state_publisher.");
@@ -105,7 +110,7 @@ int main(int argc, char** argv)
 
 	// TODO: attempt to create the state channels here
 
-	HuboHWStatePublisher publisher;
+	hubo_motion_ros::HuboHWStatePublisher publisher;
 
 	// TODO: parameterize
 	ros::Rate r(10); // 10 hz

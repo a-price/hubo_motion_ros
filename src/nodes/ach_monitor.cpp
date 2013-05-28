@@ -58,12 +58,26 @@ std::ostream& operator<<(std::ostream& os, const hubo_manip_state& obj)
 	return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const hubo_manip_cmd& obj)
+{
+	for (size_t arm = 0; arm < NUM_ARMS; arm++)
+	{
+		os << "Arm " << arm << " Manipulation State\n";
+		os << "Goal ID: " << obj.goalID[arm] << "\n";
+		os << "Mode: " << obj.m_mode[arm] << "\n";
+		os << "Grasp: " << obj.m_grasp[arm] << "\n";
+		//os << "Error: " << obj.pose[arm] << "\n";
+	}
+	return os;
+}
+
 int main(int argc, char** argv)
 {
 	ROS_INFO("Started ach_monitor.");
 	ros::init(argc, argv, "ach_monitor", ros::init_options::NoSigintHandler);
 	ros::NodeHandle nh;
-	AchMonitor<hubo_manip_state> stateChannel("manip-state");
+	//hubo_motion_ros::AchMonitor<hubo_manip_state> stateChannel("manip-state");
+	hubo_motion_ros::AchMonitor<hubo_manip_cmd> stateChannel("manip-cmd");
 
 	ros::Rate r(1);
 

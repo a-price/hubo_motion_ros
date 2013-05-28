@@ -1,7 +1,7 @@
 /**
  *
  * \file test_manipulation_forwarder.cpp
- * \brief 
+ * \brief Subsystem test for verifying operation of the manipulation and control daemons
  *
  * \author Andrew Price
  * \date May 21, 2013
@@ -49,14 +49,6 @@
 
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
-
-class HuboManipulationAction
-{
-protected:
-
-public:
-
-};
 
 hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
 {
@@ -151,6 +143,14 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 
 	goal.PoseTargets.push_back(pArrayR);
 	goal.PoseTargets.push_back(pArrayL);
+
+
+	// Hand states
+	goal.ClosedStateAtBeginning.push_back(true);
+	goal.ClosedStateAtBeginning.push_back(false);
+	goal.ClosedStateAtEnd.push_back(false);
+	goal.ClosedStateAtEnd.push_back(true);
+
 
 	return goal;
 }

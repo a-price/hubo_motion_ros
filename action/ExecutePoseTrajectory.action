@@ -4,6 +4,8 @@ uint8 PTA_LEFT=1
 # Arrays here allow for multiple simultaneous arms
 geometry_msgs/PoseArray[] PoseTargets
 uint8[] ArmIndex
+bool[] ClosedStateAtBeginning
+bool[] ClosedStateAtEnd
 ---
 #result definition
 bool Success

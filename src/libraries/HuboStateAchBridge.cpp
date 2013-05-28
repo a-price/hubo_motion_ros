@@ -7,6 +7,9 @@
 
 #include "hubo_motion_ros/HuboStateAchBridge.h"
 
+namespace hubo_motion_ros
+{
+
 HuboStateAchBridge::HuboStateAchBridge(std::string chanName) :
 	AchROSBridge(chanName)
 {
@@ -82,3 +85,5 @@ sensor_msgs::Imu HuboStateAchBridge::getIMUState(bool update)
 
 	return imu;
 }
+ 
+} //namespace hubo_motion_ros

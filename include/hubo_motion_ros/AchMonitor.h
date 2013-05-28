@@ -44,6 +44,9 @@
 
 #include "hubo_motion_ros/AchROSBridge.h"
 
+namespace hubo_motion_ros
+{
+
 template <class DataClass>
 class AchMonitor : AchROSBridge<DataClass>
 {
@@ -138,5 +141,7 @@ const DataClass& AchMonitor<DataClass>::waitState(const uint32_t millis)
 	}
 	return this->mAchData;
 }
+
+} //namespace hubo_motion_ros
 
 #endif /* ACHMONITOR_H_ */

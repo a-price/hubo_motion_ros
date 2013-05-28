@@ -50,18 +50,26 @@
 #include <ach.h>
 #include <string>
 
-#include <mutex>
+//#include <mutex>
 //#include <csignal> // TODO: Handle kill signals when listening for ach_o_wait
 //#include <cstdlib>
 
 #include <ros/ros.h>
 
+namespace hubo_motion_ros
+{
+
+/**
+ * \class AchChannel
+ * \brief A simple class containing information on an Ach channel.
+ *
+ * NB: Needs to be separate from the templated class. To be utilized further once ach_cancel is released.
+ */
 class AchChannel
 {
 public:
-	std::mutex mAchLock;
-	ach_channel_t mAchChan;
-	std::string mAchChanName;
+	ach_channel_t mAchChan;       ///< Structure containing shared memory information for Ach
+	std::string mAchChanName;     ///< String name of the ach channel
 
 	ach_status_t cancelRequest()
 	{
@@ -75,6 +83,11 @@ public:
 	}
 };
 
+/**
+ * \class AchROSBridge
+ * \brief Templated class for simplifying Ach reads and writes,
+ *  as well as encapsulating the logging of warning and error messages to ROS.
+ */
 template <class DataClass>
 class AchROSBridge
 {
@@ -106,8 +119,8 @@ public:
 protected:
 //	ach_channel_t mAchChan;
 //	std::string mAchChanName;
-	AchChannel mAchChannel;
-	DataClass mAchData;
+	AchChannel mAchChannel;       ///< Actual channel memory and name information
+	DataClass mAchData;           ///< Templated class containing the struct to push/pull to/from the channel
 };
 
 
@@ -261,5 +274,7 @@ ach_status_t AchROSBridge<DataClass>::cancelRequest()
 
 	return r;
 }
+
+} // namespace hubo_motion_ros
 
 #endif /* ACHROSBRIDGE_H_ */

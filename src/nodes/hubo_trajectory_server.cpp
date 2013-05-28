@@ -1,7 +1,7 @@
 /**
  *
  * \file hubo_manip_traj_forwarder.cpp
- * \brief Subscribes to ROS topics containing goal
+ * \brief Subscribes to ROS topics containing manipulation goal information, forwards that information over ach, and reports on the progress.
  *
  * \author Andrew Price
  * \date May 20, 2013
@@ -56,6 +56,13 @@
 #define CONVERGENCE_THRESHOLD 0.075
 #define IMMOBILITY_THRESHOLD 0.01
 
+namespace hubo_motion_ros
+{
+
+/**
+ * \class HuboManipulationAction
+ * \brief ActionServer handling callbacks for pose and joint trajectory goals.
+ */
 class HuboManipulationAction
 {
 protected:
@@ -221,6 +228,29 @@ public:
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 
+		// Set the initial hand state
+		for (int armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
+		{
+			// Caution: Remember that armIndex refers to the command's arm index, while
+			//  armIter refers to the goal.
+			size_t armIdx = goal->ArmIndex[armIter];
+			if (armIdx > (size_t)NUM_ARMS) {continue;} // Should probably throw warning here...
+
+			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
+			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+			ROS_INFO("Hand: %i", armIdx);
+			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand.\n\n\n\n" : "Opening hand.\n\n\n\n");
+			cmd.interrupt[armIdx] = true;
+			cmd.goalID[armIdx] = goalCount;
+		}
+		// Open or close the hands
+		cmdChannel.pushState(cmd);
+		stateChannel.waitState(250);
+
+		goalCount++;
+
 		// Iterate through all poses provided
 		ROS_INFO("%lu steps to complete.", goal->PoseTargets[0].poses.size());
 		for (int poseIter = 0; poseIter < goal->PoseTargets[0].poses.size(); poseIter++)
@@ -238,9 +268,18 @@ public:
 
 				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
 				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
-				cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 				cmd.interrupt[armIdx] = true;
 				cmd.goalID[armIdx] = goalCount;
+				if (goal->PoseTargets[0].poses.size()-1 == poseIter)
+				{
+					cmd.m_grasp[armIdx] = goal->ClosedStateAtEnd[armIter] ? manip_grasp_t::MC_GRASP_AT_END : manip_grasp_t::MC_RELEASE_AT_END;
+					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+				}
+				else
+				{
+					cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_STATIC;
+					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+				}
 
 				hubo_manip_pose_t pose;
 				const geometry_msgs::Pose goalPose = goal->PoseTargets[armIter].poses[poseIter];
@@ -345,12 +384,14 @@ public:
 	}
 };
 
+} // namespace hubo_motion_ros
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "hw_trajectory_server");
 	ROS_INFO("Started trajectory_server.");
 
-	HuboManipulationAction hma(ros::this_node::getName());
+	hubo_motion_ros::HuboManipulationAction hma(ros::this_node::getName());
 	ros::spin();
 
 	return 0;
