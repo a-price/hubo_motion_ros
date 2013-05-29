@@ -216,20 +216,28 @@ ach_status_t AchROSBridge<DataClass>::updateState()
 template <class DataClass>
 const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 {
-	ROS_INFO("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
-	struct timespec waitTime;
-	if( clock_gettime(ACH_DEFAULT_CLOCK, &waitTime) )
-	{
-		perror("clock_gettime");
-		exit(EXIT_FAILURE);
-	}
-	uint64_t newNanos =  waitTime.tv_nsec + (millis * 1000000);
-	waitTime.tv_sec += newNanos / 1000000000;
-	waitTime.tv_nsec = newNanos % 1000000000;
-
+	ROS_DEBUG("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
 	ach_status_t r = ACH_OK;
 	size_t fs = 0;
-	r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST );
+	if (0 == millis)
+	{
+		r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, NULL, ACH_O_WAIT | ACH_O_LAST );
+	}
+	else
+	{
+		struct timespec waitTime;
+		if( clock_gettime(ACH_DEFAULT_CLOCK, &waitTime) )
+		{
+			perror("clock_gettime");
+			exit(EXIT_FAILURE);
+		}
+		uint64_t newNanos =  waitTime.tv_nsec + (millis * 1000000);
+		waitTime.tv_sec += newNanos / 1000000000;
+		waitTime.tv_nsec = newNanos % 1000000000;
+
+
+		r = ach_get( &mAchChannel.mAchChan, &mAchData, sizeof(mAchData), &fs, &waitTime, ACH_O_WAIT | ACH_O_LAST );
+	}
 
 	if (ACH_TIMEOUT == r)
 	{

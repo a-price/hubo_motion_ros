@@ -240,7 +240,7 @@ public:
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
 			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
-			ROS_INFO("Hand: %i", armIdx);
+			ROS_INFO("Hand: %lu", armIdx);
 			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand.\n\n\n\n" : "Opening hand.\n\n\n\n");
 			cmd.interrupt[armIdx] = true;
 			cmd.goalID[armIdx] = goalCount;
