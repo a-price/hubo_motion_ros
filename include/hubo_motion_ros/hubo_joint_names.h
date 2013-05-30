@@ -73,6 +73,21 @@ const std::map<std::string, int> HUBO_JOINT_NAME_TO_LIMB_POSITION = {
 };
 
 /**
+ * \var HUBO_JOINT_INDEX_TO_LIMB_POSITION
+ * \brief Maps indices for each of Hubo's joints to their place in the limb's chain according to <hubo.h>
+ * NB: Requires C++11 to compile
+ */
+const int HUBO_JOINT_INDEX_TO_LIMB_POSITION[] = {
+	0,0,0,0,
+	0,1,2,3,4,5,5,
+	0,1,2,3,4,5,5,0,
+	0,1,2,3,4,5,0,
+	0,1,2,3,4,5,
+	0,0,0,0,0,
+	0,0,0,0,0
+};
+
+/**
  * \var HUBO_URDF_FINGER_NAMES
  * \brief Lists the finger names for Hubo's hand for hubo_urdf
  */
