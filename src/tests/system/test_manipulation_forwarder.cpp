@@ -188,8 +188,8 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 		traj.points.push_back(point);
 	}
 
-	goal.ArmIndex.push_back(0);
-	goal.JointTargets.push_back(traj);
+	//goal.ArmIndex.push_back(0);
+	goal.JointTargets = traj;
 
 	return goal;
 }

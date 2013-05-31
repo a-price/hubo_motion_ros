@@ -43,15 +43,21 @@
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
+#include <actionlib/client/simple_action_client.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
 
 #include <hubo.h>
 #include <manip.h>
 
+#include <HuboKin.h>
+
 #include "hubo_motion_ros/hubo_joint_names.h"
+#include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
+
+#define JOINTS_NOT_IMPLEMENTED
 
 #define CONVERGENCE_THRESHOLD 0.075
 #define IMMOBILITY_THRESHOLD 0.01
@@ -112,6 +118,48 @@ public:
 
 	void executeJointCB(const hubo_motion_ros::ExecuteJointTrajectoryGoalConstPtr &goal)
 	{
+#ifdef JOINTS_NOT_IMPLEMENTED
+		HK::HuboKin kinematics;
+		std::vector<Eigen::Isometry3d> poses(goal->JointTargets.points.size());
+		ros::Time tStart = ros::Time::now();
+		ros::Duration sleepTime;
+
+		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac(
+					"hubo_trajectory_server_pose", true);
+
+		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
+		{
+			HK::Vector6d q;
+			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
+			{
+				unsigned pos = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
+				q[pos] = goal->JointTargets.points[point].positions[joint];
+			}
+			kinematics.armFK(poses[point],q, LEFT);
+			ROS_INFO_STREAM("Sending pose: \n" << poses[point].matrix());
+			geometry_msgs::Pose poseMsg = toPose(poses[point]);
+			ExecutePoseTrajectoryGoal newGoal;
+
+			geometry_msgs::PoseArray pArray;
+			pArray.poses.push_back(poseMsg);
+			newGoal.PoseTargets.push_back(pArray);
+			newGoal.ArmIndex.push_back(LEFT);
+			newGoal.ClosedStateAtBeginning.push_back(false);
+			newGoal.ClosedStateAtEnd.push_back(false);
+
+
+			if (tStart + goal->JointTargets.points[point].time_from_start > ros::Time::now())
+			{
+				sleepTime = (tStart + goal->JointTargets.points[point].time_from_start - ros::Time::now());
+				sleepTime.sleep();
+			}
+
+			ac.sendGoal(newGoal);
+
+		}
+		result_j_.Success = true;
+		asj_.setSucceeded(result_j_);
+#else
 		bool preempted = false, error = false, completed = false;
 		result_j_.Success = false;
 		hubo_manip_cmd_t cmd;
@@ -214,10 +262,13 @@ public:
 		// return the result
 		result_j_.Success = (completed && !error && !preempted) ? 1 : 0;
 		asj_.setSucceeded(result_j_);
+#endif
 	}
 
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
 	{
+		ROS_INFO("New Pose!");
+		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
 		result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
@@ -229,7 +280,7 @@ public:
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 
 		// Set the initial hand state
-		for (int armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
+		for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
 		{
 			// Caution: Remember that armIndex refers to the command's arm index, while
 			//  armIter refers to the goal.
@@ -261,10 +312,11 @@ public:
 			goalCount++;
 
 			// Build cmd packet by iterating through all arms provided
-			for (int armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
+			for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
 			{
 				size_t armIdx = goal->ArmIndex[armIter];
 				if (armIdx > (size_t)NUM_ARMS) {continue;}
+				armIndices.insert(armIdx);
 
 				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
 				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
@@ -327,8 +379,12 @@ public:
 				// read the state channel
 				completed = true;
 				state = stateChannel.waitState(250);
-				for (int arm = 0; arm < NUM_ARMS; arm++)
+				for (unsigned arm = 0; arm < NUM_ARMS; arm++)
 				{
+					if (armIndices.end() == armIndices.find(arm)) // Don't care about this arm, keep going
+					{
+						continue;
+					}
 					feedback_p_.CommandState = state.mode_state[arm];
 					feedback_p_.GraspState = state.grasp_state[arm];
 					feedback_p_.ErrorState = state.error[arm];
@@ -338,7 +394,7 @@ public:
 					{
 						completed = false;
 						error = false;
-						ROS_WARN("Got old cmd ID: %i", state.goalID[arm]);
+						ROS_WARN("Got old cmd ID: %i, arm: %i", state.goalID[arm], arm);
 						continue;
 					}
 
@@ -354,10 +410,6 @@ public:
 					if (completed)
 					{
 						ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
-					}
-					else
-					{
-						ROS_INFO("Not finished yet: arm %i", arm);
 					}
 				}
 
@@ -380,7 +432,14 @@ public:
 			ROS_INFO("Completed Goal.");
 		}
 		result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
-		asp_.setSucceeded(result_p_);
+		if (result_p_.Success)
+		{
+			asp_.setSucceeded(result_p_);
+		}
+		else
+		{
+			asp_.setAborted(result_p_);
+		}
 	}
 };
 

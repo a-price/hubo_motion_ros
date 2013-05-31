@@ -65,7 +65,7 @@ const std::map<std::string, int> HUBO_JOINT_NAME_TO_INDEX = {
  * \brief Maps std::strings for each of Hubo's joints to their place in the limb's chain according to <hubo.h>
  * NB: Requires C++11 to compile
  */
-const std::map<std::string, int> HUBO_JOINT_NAME_TO_LIMB_POSITION = {
+const std::map<std::string, unsigned> HUBO_JOINT_NAME_TO_LIMB_POSITION = {
 	{"LSP",0},{"LSR",1},{"LSY",2},{"LEB",3},{"LWY",4},{"LWR",5},{"LWP",5},
 	{"RSP",0},{"RSR",1},{"RSY",2},{"REB",3},{"RWY",4},{"RWR",5},{"RWP",5},
 	{"LHY",0},{"LHR",1},{"LHP",2},{"LKN",3},{"LAP",4},{"LAR",5},
@@ -77,7 +77,7 @@ const std::map<std::string, int> HUBO_JOINT_NAME_TO_LIMB_POSITION = {
  * \brief Maps indices for each of Hubo's joints to their place in the limb's chain according to <hubo.h>
  * NB: Requires C++11 to compile
  */
-const int HUBO_JOINT_INDEX_TO_LIMB_POSITION[] = {
+const unsigned HUBO_JOINT_INDEX_TO_LIMB_POSITION[] = {
 	0,0,0,0,
 	0,1,2,3,4,5,5,
 	0,1,2,3,4,5,5,0,

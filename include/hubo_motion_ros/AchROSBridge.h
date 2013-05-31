@@ -170,6 +170,8 @@ AchROSBridge<DataClass>::~AchROSBridge()
 template <class DataClass>
 ach_status_t AchROSBridge<DataClass>::pushState(const DataClass& data)
 {
+	ROS_DEBUG("Pushing data to channel '%s'.",
+			mAchChannel.mAchChanName.c_str());
 	ach_status_t r = ACH_OK;
 
 	mAchData = data;
@@ -256,7 +258,7 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 	}
     else
     {
-        ROS_INFO("New ach data on channel '%s'.",
+    	ROS_DEBUG("New ach data on channel '%s'.",
             mAchChannel.mAchChanName.c_str());
     }
 	return mAchData;

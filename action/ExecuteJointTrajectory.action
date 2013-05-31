@@ -1,9 +1,5 @@
 #goal definition
-uint8 JTA_RIGHT=0
-uint8 JTA_LEFT=1
-# Arrays here allow for multiple simultaneous arms
-trajectory_msgs/JointTrajectory[] JointTargets
-uint8[] ArmIndex
+trajectory_msgs/JointTrajectory JointTargets
 ---
 #result definition
 bool Success
