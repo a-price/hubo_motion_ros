@@ -229,7 +229,7 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
 		// true causes the client to spin its own thread
-		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("hw_trajectory_server_pose", true);
+		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_pose", true);
 
 		ROS_INFO("Waiting for action server to start.");
 		// wait for the action server to start

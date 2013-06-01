@@ -265,6 +265,26 @@ public:
 #endif
 	}
 
+	void forceSetGrasps(manip_grasp_t grasps)
+	{
+		hubo_manip_cmd_t cmd;
+		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+		goalCount++;
+
+		// Set the initial hand state
+		for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
+			cmd.interrupt[armIdx] = true;
+			cmd.goalID[armIdx] = goalCount;
+		}
+
+		cmdChannel.pushState(cmd);
+	}
+
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
 	{
 		ROS_INFO("New Pose!");
@@ -292,7 +312,7 @@ public:
 			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
 			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
 			ROS_INFO("Hand: %lu", armIdx);
-			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand.\n\n\n\n" : "Opening hand.\n\n\n\n");
+			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand." : "Opening hand.");
 			cmd.interrupt[armIdx] = true;
 			cmd.goalID[armIdx] = goalCount;
 		}
@@ -418,6 +438,8 @@ public:
 			}
 		}
 
+		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW);
+
 		// return the result
 		if (error && completed)
 		{
@@ -440,6 +462,7 @@ public:
 		{
 			asp_.setAborted(result_p_);
 		}
+		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC);
 	}
 };
 

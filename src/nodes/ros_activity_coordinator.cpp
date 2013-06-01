@@ -33,7 +33,7 @@ bool requestPose(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
 	// true causes the client to spin its own thread
-	actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("hw_trajectory_server_pose", true);
+	actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_pose", true);
 
 	ROS_INFO("Waiting for action server to start.");
 	// wait for the action server to start
@@ -71,8 +71,15 @@ int main(int argc, char** argv)
 	tf::TransformBroadcaster tfBroadcaster;
 
 	std::string text;
-	geometry_msgs::PoseArray pArray;
-	geometry_msgs::Pose gcpPose;
+
+	geometry_msgs::Pose safePose;
+	safePose.position.x = 0.25;
+	safePose.position.y = -0.25;
+	safePose.position.z = -0.2;
+	safePose.orientation.w = 1.0;
+	safePose.orientation.x = 0.0;
+	safePose.orientation.y = 0.0;
+	safePose.orientation.z = 0.0;
 
 	tf::Transform gcpTrans;
 
@@ -84,13 +91,16 @@ int main(int argc, char** argv)
 		tf::StampedTransform tTorsoObject;
 		try
 		{
-			listener.lookupTransform("/Body_Torso", "/cylinder_gcp", ros::Time(0), tTorsoObject);
+			listener.lookupTransform("/Body_Torso", "/final_gcp", ros::Time(0), tTorsoObject);
 			ROS_INFO("Got transform!");
-
+			geometry_msgs::Pose gcpPose;
 			tf::poseTFToMsg(tf::Transform(tTorsoObject), gcpPose);
 
 			hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+			geometry_msgs::PoseArray pArray;
+
 			pArray.header.frame_id = "/Body_Torso";
+			pArray.poses.push_back(safePose);
 			pArray.poses.push_back(gcpPose);
 			goal.PoseTargets.push_back(pArray);
 			goal.ArmIndex.push_back(0);

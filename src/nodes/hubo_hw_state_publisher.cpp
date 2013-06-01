@@ -76,11 +76,11 @@ public:
 		psA = Eigen::Affine3d::Identity();
 		psB = Eigen::Affine3d::Identity();
 
-		const double alpha = 0.90, beta = 0;//0.86602540378, beta = 1.04719755;
-		psA.translate(Eigen::Vector3d(0.035, 0.0, 0.020));
+		const double alpha = 0.84, beta = 0;//0.86602540378, beta = 1.04719755;
+		psA.translate(Eigen::Vector3d(0.04, 0.04, 0.015));
 		psA.rotate(Eigen::Quaterniond(cos(alpha/2), 0, sin(alpha/2), 0).normalized());
 
-		psB.translate(Eigen::Vector3d(0.035, 0.0, 0.073));
+		psB.translate(Eigen::Vector3d(0.035, 0.04, 0.073));
 		psB.rotate(Eigen::Quaterniond(cos(beta/2), 0, sin(beta/2), 0).normalized());
 
 		tf::Transform tfA,tfB;
