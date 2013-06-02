@@ -47,6 +47,8 @@
 ros::Publisher m_JointPublisher;
 ros::Subscriber m_TrajSubscriber;
 
+sensor_msgs::JointState currentState;
+
 void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
 {
 	ros::Time startTime = ros::Time::now();
@@ -65,7 +67,7 @@ void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
 		for (int j = 0; j < jt->joint_names.size(); j++)
 		{
 			js.position.push_back(jt->points[step].positions[j]);
-			js.velocity.push_back(jt->points[step].velocities[j]);
+			//js.velocity.push_back(jt->points[step].velocities[j]);
 		}
 
 		// Possibly sleep if the goal is still in the future
@@ -73,13 +75,24 @@ void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
 		if (goalTime > ros::Time::now())
 		{
 			(goalTime - ros::Time::now()).sleep();
+			
 		}
+
+		js.header.stamp = ros::Time::now();
 
 		// Send the goal as the actual state
 		m_JointPublisher.publish(js);
 
+		currentState = js;
 	}
 
+	
+}
+
+void republishState()
+{
+	currentState.header.stamp = ros::Time::now();
+	m_JointPublisher.publish(currentState);
 }
 
 int main(int argc, char** argv)
@@ -92,7 +105,13 @@ int main(int argc, char** argv)
 	m_TrajSubscriber = m_nh.subscribe("joint_trajectory", 1, &trajectoryCallback);
 	m_JointPublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
 
-	ros::spin();
+	ros::Rate r(10);
+	while(ros::ok())
+	{
+		republishState();
+		ros::spinOnce();
+		r.sleep();
+	}
 
 	return 0;
 }

@@ -36,7 +36,7 @@ const std::string HUBO_JOINT_NAMES[] =
  */
 const std::string HUBO_URDF_JOINT_NAMES[] = 
 {
-	"HPY","NKY","NK1","NK2", //HNR, HNP ?
+	"WST","NKY","NKP","NK2", //HNR, HNP ?
 	"LSP","LSR","LSY","LEP","LWY","LWR","LWP",
 	"RSP","RSR","RSY","REP","RWY","RWR","RWP","",
 	"LHY","LHR","LHP","LKP","LAP","LAR","",

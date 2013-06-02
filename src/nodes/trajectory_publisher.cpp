@@ -65,9 +65,11 @@ public:
 	};
 
 	ZMPTrajectoryPublisher(HUBO_MODEL hubo) :
-		m_TrajChannel("zmp")
+		m_TrajChannel("hubo-zmp-traj")
 	{
 		m_TrajectoryPublisher = m_nh.advertise<trajectory_msgs::JointTrajectory>("/joint_trajectory", 1);
+		m_HuboModel = hubo;
+		ROS_INFO_STREAM("Hubo: " << m_HuboModel);
 	}
 
 	void publishTrajectory(const uint32_t  waitTime)
@@ -83,11 +85,14 @@ public:
 			std::string jointName;
 			if (HUBO_MODEL::DRCHUBO == m_HuboModel)
 			{
-				jt.joint_names.push_back(DRCHUBO_JOINT_NAMES[joint]);
+				std::string jName = DRCHUBO_URDF_JOINT_NAMES[joint];
+				if (jName == "") {continue;}
+				jt.joint_names.push_back(jName);
+				ROS_INFO("Adding a DRC-Hubo Joint!");
 			}
 			else
 			{
-				jt.joint_names.push_back(HUBO_JOINT_NAMES[joint]);
+				jt.joint_names.push_back(HUBO_URDF_JOINT_NAMES[joint]);
 			}
 		}
 
@@ -100,13 +105,15 @@ public:
 			// TODO: do we need to do finite difference method to get V&A?
 			for (unsigned joint = WST; joint <= LF5; joint++)
 			{
+				std::string jName = DRCHUBO_URDF_JOINT_NAMES[joint];
+				if (jName == "") {continue;}
 				point.positions.push_back(trajectory.traj[i].angles[joint]);
 			}
 
-			jt.points.push_back(point);
-
 			// Compute the time from the beginning
-			point.time_from_start = ros::Duration(((double)i) * 1/(double)ZMP_TRAJ_FREQ_HZ);
+			point.time_from_start = ros::Duration(((double)i) * 1.0/(double)ZMP_TRAJ_FREQ_HZ);
+
+			jt.points.push_back(point);
 		}
 
 		m_TrajectoryPublisher.publish(jt);
