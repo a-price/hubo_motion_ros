@@ -45,6 +45,7 @@
 #include <hubo-zmp.h>
 
 #include "hubo_motion_ros/hubo_joint_names.h"
+#include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
 namespace hubo_motion_ros
@@ -57,7 +58,13 @@ namespace hubo_motion_ros
 class ZMPTrajectoryPublisher
 {
 public:
-	ZMPTrajectoryPublisher() :
+	enum HUBO_MODEL
+	{
+		HUBOPLUS,
+		DRCHUBO
+	};
+
+	ZMPTrajectoryPublisher(HUBO_MODEL hubo) :
 		m_TrajChannel("zmp")
 	{
 		m_TrajectoryPublisher = m_nh.advertise<trajectory_msgs::JointTrajectory>("/joint_trajectory", 1);
@@ -73,7 +80,15 @@ public:
 		// Add all joint names
 		for (unsigned joint = WST; joint <= LF5; joint++)
 		{
-			jt.joint_names.push_back(HUBO_JOINT_NAMES[joint]);
+			std::string jointName;
+			if (HUBO_MODEL::DRCHUBO == m_HuboModel)
+			{
+				jt.joint_names.push_back(DRCHUBO_JOINT_NAMES[joint]);
+			}
+			else
+			{
+				jt.joint_names.push_back(HUBO_JOINT_NAMES[joint]);
+			}
 		}
 
 		// Loop through all active trajectory steps
@@ -102,16 +117,43 @@ protected:
 
 	ros::NodeHandle m_nh;                   ///< ROS NodeHandle for advertising topics
 	ros::Publisher m_TrajectoryPublisher;   ///< ROS Publisher to publish new joint_trajectory messages
+	HUBO_MODEL m_HuboModel;                 ///< Switches between different joint names for different models
 };
 
 } // namespace hubo_motion_ros
+
+using namespace hubo_motion_ros;
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "trajectory_publisher");
 	ROS_INFO("Started trajectory_publisher.");
 
-	hubo_motion_ros::ZMPTrajectoryPublisher publisher;
+	ros::NodeHandle nh;
+	std::string huboModel;
+	ZMPTrajectoryPublisher::HUBO_MODEL model;
+	nh.param<std::string>("hubo_model", huboModel, "drc_hubo");
+
+	switch (huboModel)
+	{
+		case "drc_hubo":
+		{
+			model = ZMPTrajectoryPublisher::HUBO_MODEL::DRCHUBO;
+			break;
+		}
+		case "hubo_plus":
+		{
+			model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+			break;
+		}
+		default:
+		{
+			model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+			break;
+		}
+	}
+
+	hubo_motion_ros::ZMPTrajectoryPublisher publisher(model);
 
 	while (ros::ok())
 	{
