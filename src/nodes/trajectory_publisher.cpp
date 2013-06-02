@@ -134,24 +134,13 @@ int main(int argc, char** argv)
 	ZMPTrajectoryPublisher::HUBO_MODEL model;
 	nh.param<std::string>("hubo_model", huboModel, "drc_hubo");
 
-	switch (huboModel)
-	{
-		case "drc_hubo":
-		{
-			model = ZMPTrajectoryPublisher::HUBO_MODEL::DRCHUBO;
-			break;
-		}
-		case "hubo_plus":
-		{
-			model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
-			break;
-		}
-		default:
-		{
-			model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
-			break;
-		}
-	}
+	if ("drc_hubo" == huboModel)
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::DRCHUBO;
+	else if ("hubo_plus" == huboModel)
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+	else
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+
 
 	hubo_motion_ros::ZMPTrajectoryPublisher publisher(model);
 
