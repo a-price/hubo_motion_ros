@@ -88,6 +88,8 @@ public:
 				point.positions.push_back(trajectory.traj[i].angles[joint]);
 			}
 
+			jt.points.push_back(point);
+
 			// Compute the time from the beginning
 			point.time_from_start = ros::Duration(((double)i) * 1/(double)ZMP_TRAJ_FREQ_HZ);
 		}
