@@ -131,11 +131,14 @@ protected:
     int ipAddrC;
     int ipAddrD;
 
-protected Q_SLOTS:
-
+public Q_SLOTS:
 
     void achdConnectSlot();
     void achdDisconnectSlot();
+
+protected Q_SLOTS:
+
+
     void handleDead(int exitStatus);
     void ipEditHandle(const QString &text);
 

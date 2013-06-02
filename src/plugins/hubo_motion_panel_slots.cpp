@@ -13,11 +13,9 @@ void HuboMotionPanel::handleCheckToggle(bool active)
         stopLiberty();
 }
 
-void HuboMotionPanel::getRefreshData(hubo_manip_cmd_t cmd)
+void HuboMotionPanel::getRefreshData(double data, int i, int j)
 {
-    for(int i=0; i<datas.size(); i++)
-        for(int j=0; j<datas[i].size(); j++)
-            datas[i][j]->setText(QString::number(cmd.pose[i].data[j]));
+    datas[i][j]->setText(QString::number(data, 'g', 3));
 }
 
 void HuboMotionPanel::handleLibQuit() { libertyCheck->setChecked(false); }
@@ -31,6 +29,11 @@ void LibertyRelay::haltOperation()
 void LibertyRelay::getUpdateFrequency(double value)
 {
     updateFreq = value;
+}
+
+void LibertyRelay::getWaistValue(int val)
+{
+    waistAngle = val*M_PI/180.0;
 }
 
 

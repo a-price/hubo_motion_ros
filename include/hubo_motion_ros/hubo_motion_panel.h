@@ -46,6 +46,8 @@
 #include <liberty.h>
 
 
+
+
 namespace hubo_motion_ros
 {
 
@@ -62,6 +64,7 @@ public:
     bool alive;
     double updateFreq;
     void openChannels();
+    double waistAngle;
 
     hubo_manip_cmd_t cmd;
 
@@ -78,8 +81,10 @@ public Q_SLOTS:
     void loosenL();
     void loosenR();
 
+    void getWaistValue(int val);
+
 signals:
-    void refreshData(hubo_manip_cmd_t lib);
+    void refreshData(double data, int i, int j);
     void libertyQuitting();
 
 };
@@ -108,13 +113,16 @@ private:
     QPushButton* loosenLB;
     QPushButton* loosenRB;
 
+    QSlider* waistSlide;
+    double waistScale;
+
 signals:
     void stopLiberty();
 
 protected Q_SLOTS:
 
     void handleCheckToggle(bool active);
-    void getRefreshData(hubo_manip_cmd_t cmd);
+    void getRefreshData(double data, int i, int j);
     void handleLibQuit();
 
 };

@@ -7,6 +7,8 @@ namespace hubo_motion_ros
 HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     : rviz::Panel(parent)
 {
+
+
     // TODO: Add channels
 
     achManager = new AchNetworkWidget;
@@ -52,7 +54,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     dumbLayout->addLayout(checkLayout);
 
     connect(this, SIGNAL(stopLiberty()), &libertyThread, SLOT(haltOperation()));
-    connect(&libertyThread, SIGNAL(refreshData(hubo_manip_cmd_t)), this, SLOT(getRefreshData(hubo_manip_cmd_t)));
+    connect(&libertyThread, SIGNAL(refreshData(double,int,int)), this, SLOT(getRefreshData(double,int,int)));
     connect(&libertyThread, SIGNAL(libertyQuitting()), this, SLOT(handleLibQuit()));
 
 
@@ -69,16 +71,56 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
         }
     }
 
+    QHBoxLayout* rightGraspLay = new QHBoxLayout;
+    graspRB = new QPushButton;
+    graspRB->setText("Grasp R");
+    rightGraspLay->addWidget(graspRB);
+    connect(graspRB, SIGNAL(clicked()), &libertyThread, SLOT(graspR()));
+    openRB = new QPushButton;
+    openRB->setText("Open R");
+    rightGraspLay->addWidget(openRB);
+    connect(openRB, SIGNAL(clicked()), &libertyThread, SLOT(openR()));
+    loosenRB = new QPushButton;
+    loosenRB->setText("Loosen R");
+    rightGraspLay->addWidget(loosenRB);
+    connect(loosenRB, SIGNAL(clicked()), &libertyThread, SLOT(loosenR()));
+
+    dumbLayout->addLayout(rightGraspLay);
+
+    QHBoxLayout* leftGraspLay = new QHBoxLayout;
+    graspLB = new QPushButton;
+    graspLB->setText("Grasp L");
+    leftGraspLay->addWidget(graspLB);
+    connect(graspLB, SIGNAL(clicked()), &libertyThread, SLOT(graspL()));
+    openLB = new QPushButton;
+    openLB->setText("Open L");
+    leftGraspLay->addWidget(openLB);
+    connect(openLB, SIGNAL(clicked()), &libertyThread, SLOT(openL()));
+    loosenLB = new QPushButton;
+    loosenLB->setText("Loosen L");
+    leftGraspLay->addWidget(loosenLB);
+    connect(loosenLB, SIGNAL(clicked()), &libertyThread, SLOT(loosenL()));
+
+    dumbLayout->addLayout(leftGraspLay);
+
     libertyThread.openChannels();
 
     dumbLayout->addLayout(grid);
+
+    waistSlide = new QSlider(Qt::Horizontal);
+    waistSlide->setMaximum(160);
+    waistSlide->setMinimum(-160);
+    waistSlide->setValue(0);
+    waistSlide->setToolTip("Waist Angle Value");
+    connect(waistSlide, SIGNAL(valueChanged(int)), &libertyThread, SLOT(getWaistValue(int)));
+    dumbLayout->addWidget(waistSlide);
 
     setLayout(dumbLayout);
 }
 
 HuboMotionPanel::~HuboMotionPanel()
 {
-
+    achManager->achdDisconnectSlot();
 }
 
 void HuboMotionPanel::save(rviz::Config config) const
@@ -117,6 +159,11 @@ void LibertyRelay::run()
      && (ACH_OK==manR || ACH_MISSED_FRAME==manR || ACH_STALE_FRAMES==manR) )
         alive = true;
 
+    QVector<QVector<double> > dataSend;
+    dataSend.resize(2);
+    for(int i=0; i<dataSend.size(); i++)
+        dataSend[i].resize(7);
+
     while(alive)
     {
         ach_get( &libertyChan, &lib, sizeof(lib), &fs, NULL, ACH_O_WAIT );
@@ -133,17 +180,29 @@ void LibertyRelay::run()
             for(int j=3; j<7; j++)
                 cmd.pose[i].data[j] = lib.sensor[i][j];
 
-        double elapsed = refClock.elapsed()*1000;
+
+        double elapsed = refClock.elapsed()/1000.0;
         if( updateFreq > 0 )
         {
             if( elapsed > 1.0/updateFreq )
             {
+                for(int i=0; i<dataSend.size(); i++)
+                    for(int j=0; j<7; j++)
+                        emit refreshData(cmd.pose[i].data[j], i, j);
                 refClock.restart();
-                emit refreshData(cmd);
             }
         }
+        cmd.waistAngle = waistAngle;
         ach_put( &manipCmdChan, &cmd, sizeof(cmd) );
     }
+
+    cmd.m_mode[0] = MC_HALT;
+    cmd.m_mode[1] = MC_HALT;
+    cmd.interrupt[0] = true;
+    cmd.interrupt[1] = true;
+
+    cmd.waistAngle = waistAngle;
+    ach_put( &manipCmdChan, &cmd, sizeof(cmd) );
 
     emit libertyQuitting();
 }
