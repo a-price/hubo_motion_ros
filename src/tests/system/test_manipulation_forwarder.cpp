@@ -146,10 +146,10 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 
 
 	// Hand states
-	goal.ClosedStateAtBeginning.push_back(true);
+	goal.ClosedStateAtBeginning.push_back(false);
 	goal.ClosedStateAtBeginning.push_back(false);
 	goal.ClosedStateAtEnd.push_back(false);
-	goal.ClosedStateAtEnd.push_back(true);
+	goal.ClosedStateAtEnd.push_back(false);
 
 
 	return goal;

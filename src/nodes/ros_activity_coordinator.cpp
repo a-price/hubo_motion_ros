@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 
 	geometry_msgs::Pose safePose;
 	safePose.position.x = 0.25;
-	safePose.position.y = 0.25 * (ARM == 0) ? -1 : 1;
+	safePose.position.y = 0.25 * ((ARM == 0) ? -1 : 1);
 	safePose.position.z = -0.2;
 	safePose.orientation.w = 1.0;
 	safePose.orientation.x = 0.0;

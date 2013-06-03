@@ -255,7 +255,7 @@ public:
 
 				completed = completed &&
 						((state.mode_state[arm] == manip_mode_t::MC_READY) ||
-						(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
+						(state.mode_state[arm] == manip_mode_t::MC_HALT));
 				error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 			}
 
@@ -269,7 +269,7 @@ public:
 #endif
 	}
 
-	void forceSetGrasps(manip_grasp_t grasps)
+	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
 	{
 		hubo_manip_cmd_t cmd;
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
@@ -282,7 +282,7 @@ public:
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
 			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
-			cmd.interrupt[armIdx] = true;
+			cmd.interrupt[armIdx] = interrupting;
 			cmd.goalID[armIdx] = goalCount;
 		}
 
@@ -433,7 +433,7 @@ public:
 
 					completed = completed &&
 								((state.mode_state[arm] == manip_mode_t::MC_READY) ||
-								(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
+								(state.mode_state[arm] == manip_mode_t::MC_HALT));
 					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 					if (error)
 					{
@@ -451,7 +451,7 @@ public:
 			}
 		}
 
-		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW);
+		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
 
 		// return the result
 		if (error && completed)
@@ -475,7 +475,7 @@ public:
 		{
 			asp_.setAborted(result_p_);
 		}
-		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC);
+		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
 	}
 };
 
