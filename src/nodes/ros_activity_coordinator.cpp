@@ -26,7 +26,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-const int ARM = 0;
+const int ARM = 1;
 
 
 bool requestPose(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
 
 	geometry_msgs::Pose safePose;
 	safePose.position.x = 0.25;
-	safePose.position.y = -0.25;
+	safePose.position.y = 0.25 * (ARM == 0) ? -1 : 1;
 	safePose.position.z = -0.2;
 	safePose.orientation.w = 1.0;
 	safePose.orientation.x = 0.0;
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
 			pArray.poses.push_back(safePose);
 			pArray.poses.push_back(gcpPose);
 			goal.PoseTargets.push_back(pArray);
-			goal.ArmIndex.push_back(0);
+			goal.ArmIndex.push_back(ARM);
 			goal.ClosedStateAtBeginning.push_back(false);
 			goal.ClosedStateAtEnd.push_back(true);
 			requestPose(goal);
