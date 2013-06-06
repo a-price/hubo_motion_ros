@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <string>
+#include <hubo.h>
 
 #include <ros/ros.h>
 #include <tf/tf.h>
@@ -26,7 +27,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-const int ARM = 1;
+const int ARM = LEFT;
 
 
 bool requestPose(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)

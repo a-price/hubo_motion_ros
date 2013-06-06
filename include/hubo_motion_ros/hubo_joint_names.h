@@ -36,7 +36,7 @@ const std::string HUBO_JOINT_NAMES[] =
  */
 const std::string HUBO_URDF_JOINT_NAMES[] = 
 {
-	"WST","NKY","NKP","NK2", //HNR, HNP ?
+	"HPY","NKY","NK1","NK2", //HNR, HNP ?
 	"LSP","LSR","LSY","LEP","LWY","LWR","LWP",
 	"RSP","RSR","RSY","REP","RWY","RWR","RWP","",
 	"LHY","LHR","LHP","LKP","LAP","LAR","",
@@ -51,6 +51,7 @@ const std::string HUBO_URDF_JOINT_NAMES[] =
  * NB: Requires C++11 to compile
  */
 const std::map<std::string, int> HUBO_JOINT_NAME_TO_INDEX = {
+	{"HPY",WST},
 	{"WST",WST},{"NKY",NKY},{"NK1",NK1},{"NK2",NK2},
 	{"LSP",LSP},{"LSR",LSR},{"LSY",LSY},{"LEB",LEB},{"LWY",LWY},{"LWR",LWR},{"LWP",LWP},
 	{"RSP",RSP},{"RSR",RSR},{"RSY",RSY},{"REB",REB},{"RWY",RWY},{"RWR",RWR},{"RWP",RWP},
@@ -66,8 +67,8 @@ const std::map<std::string, int> HUBO_JOINT_NAME_TO_INDEX = {
  * NB: Requires C++11 to compile
  */
 const std::map<std::string, unsigned> HUBO_JOINT_NAME_TO_LIMB_POSITION = {
-	{"LSP",0},{"LSR",1},{"LSY",2},{"LEB",3},{"LWY",4},{"LWR",5},{"LWP",5},
-	{"RSP",0},{"RSR",1},{"RSY",2},{"REB",3},{"RWY",4},{"RWR",5},{"RWP",5},
+	{"LSP",0},{"LSR",1},{"LSY",2},{"LEB",3},{"LEP",3},{"LWY",4},{"LWR",5},{"LWP",5},
+	{"RSP",0},{"RSR",1},{"RSY",2},{"REB",3},{"REP",3},{"RWY",4},{"RWR",5},{"RWP",5},
 	{"LHY",0},{"LHR",1},{"LHP",2},{"LKN",3},{"LAP",4},{"LAR",5},
 	{"RHY",0},{"RHR",1},{"RHP",2},{"RKN",3},{"RAP",4},{"RAR",5}
 };

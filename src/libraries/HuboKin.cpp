@@ -32,7 +32,7 @@ HuboKin::KinConstants::KinConstants() {
   arm_l1 = 214.5/1000.0;        // neck to shoulder Y
   arm_l2 = 179.14/1000.0;       // ?
   arm_l3 = 181.59/1000.0;       // ?
-  arm_l4 = 4.75*25.4/1000.0;    // ?
+  arm_l4 = 3*25.4/1000.0;       // ?
 
   leg_l1 = (79.5+107)/1000.0;   // neck to waist Z 
   leg_l2 = 88.43/1000.0;        // waist to hip  Y
@@ -174,7 +174,7 @@ void HuboKin::armFK(Isometry3d &B, const Vector6d &q, int side,
   double l1 = 214.5/1000.0;
   double l2 = 179.14/1000.0;
   double l3 = 181.59/1000.0;
-  double l4 = 4.75*25.4/1000.0;
+  double l4 = 3*25.4/1000.0;
 
 #else
 
@@ -283,7 +283,7 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   double l1 = 214.5/1000.0;
   double l2 = 179.14/1000.0;
   double l3 = 181.59/1000.0;
-  double l4 = 4.75*25.4/1000.0;
+  double l4 = 3*25.4/1000.0;
 
 #else
 

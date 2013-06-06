@@ -28,8 +28,8 @@ public:
 	HuboHWStatePublisher() :
 		m_HuboState()
 	{
-		m_JointPublisher = m_nh.advertise<sensor_msgs::JointState>("/hubo/joint_states", 1);
-		m_ImuPublisher = m_nh.advertise<sensor_msgs::Imu>("/hubo/imu", 1);
+		m_JointPublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
+		m_ImuPublisher = m_nh.advertise<sensor_msgs::Imu>("imu", 1);
 	}
 
 	void publishState()
