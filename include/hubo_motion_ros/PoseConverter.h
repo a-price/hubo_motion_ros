@@ -55,9 +55,34 @@ Eigen::Isometry3d toIsometry(geometry_msgs::Pose pose);
 Eigen::Isometry3d toIsometry(tf::Transform pose);
 
 //tf::Transform toTF(geometry_msgs::Pose pose);
-//tf::Transform toTF(Eigen::Isometry3d pose);
-//
-geometry_msgs::Pose toPose(Eigen::Isometry3d pose);
+template <typename Derived>
+tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
+{
+	tf::Transform t;
+	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
+	Eigen::Quaternion<Derived> eQuat(pose.rotation());
+	t.setOrigin(tf::Vector3(eTrans.x(), eTrans.y(),eTrans.z()));
+	t.setRotation(tf::Quaternion(eQuat.x(), eQuat.y(), eQuat.z(), eQuat.w()));
+	return t;
+}
+
+template <typename Derived>
+geometry_msgs::Pose toPose(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
+{
+	geometry_msgs::Pose result;
+	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
+	Eigen::Quaternion<Derived> eQuat(pose.rotation());
+
+	result.position.x = eTrans.x();
+	result.position.y = eTrans.y();
+	result.position.z = eTrans.z();
+	result.orientation.w = eQuat.w();
+	result.orientation.x = eQuat.x();
+	result.orientation.y = eQuat.y();
+	result.orientation.z = eQuat.z();
+
+	return result;
+}
 //geometry_msgs::Pose toPose(tf::Transform pose);
 
 } /* namespace hubo_manipulation_planner */

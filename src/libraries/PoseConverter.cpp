@@ -73,27 +73,34 @@ Eigen::Isometry3d toIsometry(tf::Transform pose)
 //{
 //
 //}
-//tf::Transform toTF(Eigen::Isometry3d pose)
+
+//template <typename Derived>
+//tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 //{
-//
+//	tf::Transform t;
+//	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
+//	Eigen::Quaternion<Derived> eQuat(pose.rotation());
+//	t.setOrigin(tf::Vector3(eTrans.x(), eTrans.y(),eTrans.z()));
+//	t.setRotation(tf::Quaternion(eQuat.x(), eQuat.y(), eQuat.z(), eQuat.w()));
+//	return t;
 //}
+
+//geometry_msgs::Pose toPose(Eigen::Isometry3d pose)
+//{
+//	geometry_msgs::Pose result;
+//	Eigen::Vector3d eTrans = pose.translation();
+//	Eigen::Quaterniond eQuat(pose.rotation());
 //
-geometry_msgs::Pose toPose(Eigen::Isometry3d pose)
-{
-	geometry_msgs::Pose result;
-	Eigen::Vector3d eTrans = pose.translation();
-	Eigen::Quaterniond eQuat(pose.rotation());
-
-	result.position.x = eTrans[0];
-	result.position.y = eTrans[1];
-	result.position.z = eTrans[2];
-	result.orientation.w = eQuat.w();
-	result.orientation.x = eQuat.x();
-	result.orientation.y = eQuat.y();
-	result.orientation.z = eQuat.z();
-
-	return result;
-}
+//	result.position.x = eTrans[0];
+//	result.position.y = eTrans[1];
+//	result.position.z = eTrans[2];
+//	result.orientation.w = eQuat.w();
+//	result.orientation.x = eQuat.x();
+//	result.orientation.y = eQuat.y();
+//	result.orientation.z = eQuat.z();
+//
+//	return result;
+//}
 //geometry_msgs::Pose toPose(tf::Transform pose)
 //{
 //
