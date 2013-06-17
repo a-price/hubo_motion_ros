@@ -29,27 +29,27 @@ add_definitions(${EIGEN_DEFINITIONS})
 file(GLOB message_source "msg/*.msg")
 list(SORT message_source)
 foreach(message_src_file ${message_source})
-    get_filename_component(message_base ${message_src_file} NAME)
-    message(STATUS "Adding message ${message_base}" )
-    add_message_files(DIRECTORY msg FILES ${message_base})
+	get_filename_component(message_base ${message_src_file} NAME)
+	message(STATUS "Adding message ${message_base}" )
+	add_message_files(DIRECTORY msg FILES ${message_base})
 endforeach(message_src_file)
 
 ## Generate services in the 'srv' folder
 file(GLOB service_source "srv/*.srv")
 list(SORT service_source)
 foreach(service_src_file ${service_source})
-    get_filename_component(service_base ${service_src_file} NAME)
-    message(STATUS "Adding service ${service_base}" )
-    add_service_files(DIRECTORY srv FILES ${service_base})
+	get_filename_component(service_base ${service_src_file} NAME)
+	message(STATUS "Adding service ${service_base}" )
+	add_service_files(DIRECTORY srv FILES ${service_base})
 endforeach(service_src_file)
 
 ## Generate actions in the 'action' folder
 file(GLOB action_source "action/*.action")
 list(SORT action_source)
 foreach(action_src_file ${action_source})
-    get_filename_component(action_base ${action_src_file} NAME)
-    message(STATUS "Adding action ${action_base}" )
-    add_action_files(DIRECTORY action FILES ${action_base})
+	get_filename_component(action_base ${action_src_file} NAME)
+	message(STATUS "Adding action ${action_base}" )
+	add_action_files(DIRECTORY action FILES ${action_base})
 endforeach(action_src_file)
 
 ## Actually generate the language-specific message and service files
@@ -66,11 +66,11 @@ generate_messages(DEPENDENCIES std_msgs sensor_msgs geometry_msgs trajectory_msg
 catkin_package(
 	INCLUDE_DIRS include
 	LIBRARIES hubo_motion_ros
-	CATKIN_DEPENDS roscpp 
+	CATKIN_DEPENDS roscpp
  message_runtime genmsg actionlib actionlib_msgs
  std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs
  tf tf_conversions eigen_conversions rviz class_loader
-    DEPENDS ach rt QtCore QtGui
+	DEPENDS ach rt QtCore QtGui
 )
 
 ## Your package locations should be listed before other locations
@@ -100,7 +100,7 @@ file(GLOB system_tests_source "src/tests/system/*.cpp")
 list(SORT system_tests_source)
 
 file(GLOB include_source "include/hubo_motion_ros/*.h")
-qt4_wrap_cpp(MOC_FILES ${include_source})
+qt4_wrap_cpp(MOC_FILES include/hubo_motion_ros/AchNetworkWidget.h include/hubo_motion_ros/hubo_motion_panel.h include/hubo_motion_ros/manip_tab.h)
 
 message(STATUS "${MOC_FILES}")
 
@@ -115,23 +115,23 @@ enable_testing()
 # Build executables
 message(STATUS "\n-- ROS NODES: ")
 foreach(node_src_file ${nodes_source})
-    get_filename_component(node_base ${node_src_file} NAME_WE)
-    message(STATUS "Adding ROS Node ${node_base}" )
-    add_executable(${node_base} ${node_src_file})
-    target_link_libraries(${node_base} ${PROJECT_NAME})
-    add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
-    set_target_properties(${node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
+	get_filename_component(node_base ${node_src_file} NAME_WE)
+	message(STATUS "Adding ROS Node ${node_base}" )
+	add_executable(${node_base} ${node_src_file})
+	target_link_libraries(${node_base} ${PROJECT_NAME})
+	add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
+	set_target_properties(${node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 endforeach(node_src_file)
 
 # Build system tests
 message(STATUS "\n-- ROS TESTING NODES: ")
 foreach(test_node_src_file ${system_tests_source})
-    get_filename_component(test_node_base ${test_node_src_file} NAME_WE)
-    message(STATUS "Adding ROS Node ${test_node_base}" )
-    add_executable(${test_node_base} ${test_node_src_file})
-    target_link_libraries(${test_node_base} ${PROJECT_NAME})
-    add_dependencies(${test_node_base} ${PROJECT_NAME}_gencpp)
-    set_target_properties(${test_node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
+	get_filename_component(test_node_base ${test_node_src_file} NAME_WE)
+	message(STATUS "Adding ROS Node ${test_node_base}" )
+	add_executable(${test_node_base} ${test_node_src_file})
+	target_link_libraries(${test_node_base} ${PROJECT_NAME})
+	add_dependencies(${test_node_base} ${PROJECT_NAME}_gencpp)
+	set_target_properties(${test_node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 endforeach(test_node_src_file)
 
 #############
