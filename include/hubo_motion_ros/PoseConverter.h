@@ -1,7 +1,7 @@
 /**
  *
  * \file PoseConverter.h
- * \brief 
+ * \brief
  *
  * \author Andrew Price
  * \date May 30, 2013
@@ -46,6 +46,7 @@
 #include <Eigen/Geometry>
 
 #include <tf/tf.h>
+#include <tf/transform_datatypes.h>
 #include <geometry_msgs/Pose.h>
 
 namespace hubo_motion_ros
@@ -54,7 +55,8 @@ namespace hubo_motion_ros
 Eigen::Isometry3d toIsometry(geometry_msgs::Pose pose);
 Eigen::Isometry3d toIsometry(tf::Transform pose);
 
-//tf::Transform toTF(geometry_msgs::Pose pose);
+tf::Transform toTF(geometry_msgs::Pose pose);
+
 template <typename Derived>
 tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 {
@@ -83,7 +85,8 @@ geometry_msgs::Pose toPose(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 
 	return result;
 }
-//geometry_msgs::Pose toPose(tf::Transform pose);
+
+geometry_msgs::Pose toPose(tf::Transform pose);
 
 } /* namespace hubo_manipulation_planner */
 #endif /* POSECONVERTER_H_ */

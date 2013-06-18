@@ -2,7 +2,9 @@
 	
 	<param name="/robot_description" textfile="$(find hubo_urdf)/huboplus.urdf" />
 	
-	<node name="hw_state_publisher" pkg="hubo_motion_ros" type="hubo_hw_state_publisher" />
+	<node name="hw_state_publisher" pkg="hubo_motion_ros" type="hubo_hw_state_publisher" >
+		<remap from="/joint_states" to="/hubo/joint_states"/>
+	</node>
 	
 	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
 		<remap from="/joint_states" to="/hubo/joint_states"/>
