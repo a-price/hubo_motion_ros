@@ -54,13 +54,13 @@ sensor_msgs::Imu HuboStateAchBridge::getIMUState(bool update)
 
 	((hubo_state)mAchData).imu[COM_IMU_INDEX].a_y = 90.0;
 
-	Eigen::Isometry3d t = Eigen::Isometry3d::Identity();
-	t.rotate(Eigen::AngleAxisd(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_x*M_PI/180.0, Eigen::Vector3d::UnitX()));
-	t.rotate(Eigen::AngleAxisd(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_y*M_PI/180.0, Eigen::Vector3d::UnitY()));
-	t.rotate(Eigen::AngleAxisd(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_z*M_PI/180.0, Eigen::Vector3d::UnitZ()));
-	Eigen::Quaterniond orientation(t.rotation());
+	Eigen::Isometry3f t = Eigen::Isometry3f::Identity();
+	t.rotate(Eigen::AngleAxisf(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_x*M_PI/180.0, Eigen::Vector3f::UnitX()));
+	t.rotate(Eigen::AngleAxisf(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_y*M_PI/180.0, Eigen::Vector3f::UnitY()));
+	t.rotate(Eigen::AngleAxisf(-((hubo_state)mAchData).imu[COM_IMU_INDEX].a_z*M_PI/180.0, Eigen::Vector3f::UnitZ()));
+	Eigen::Quaternionf orientation(t.rotation());
 
-	Eigen::Vector4d pos = t*-Eigen::Vector4d::UnitZ()*9.8;
+	Eigen::Vector4f pos = t*-Eigen::Vector4f::UnitZ()*9.8;
 
 	q.w = orientation.w();
 	q.x = orientation.x();

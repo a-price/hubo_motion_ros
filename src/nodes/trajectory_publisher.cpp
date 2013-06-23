@@ -111,7 +111,7 @@ public:
 			}
 
 			// Compute the time from the beginning
-			point.time_from_start = ros::Duration(((double)i) * 1.0/(double)ZMP_TRAJ_FREQ_HZ);
+			point.time_from_start = ros::Duration(((float)i) * 1.0/(float)ZMP_TRAJ_FREQ_HZ);
 
 			jt.points.push_back(point);
 		}

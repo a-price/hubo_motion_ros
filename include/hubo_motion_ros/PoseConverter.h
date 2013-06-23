@@ -52,8 +52,8 @@
 namespace hubo_motion_ros
 {
 
-Eigen::Isometry3d toIsometry(geometry_msgs::Pose pose);
-Eigen::Isometry3d toIsometry(tf::Transform pose);
+Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose);
+Eigen::Isometry3f toIsometry(tf::Transform pose);
 
 tf::Transform toTF(geometry_msgs::Pose pose);
 

@@ -124,7 +124,7 @@ public:
 	{
 #ifdef JOINTS_NOT_IMPLEMENTED
 		HK::HuboKin kinematics;
-		std::vector<Eigen::Isometry3d> poses(goal->JointTargets.points.size());
+		std::vector<Eigen::Isometry3f> poses(goal->JointTargets.points.size());
 		ros::Time tStart = ros::Time::now();
 		ros::Duration sleepTime;
 
@@ -133,7 +133,7 @@ public:
 
 		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
 		{
-			HK::Vector6d q;
+			HK::Vector6f q;
 			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
 			{
 				unsigned pos = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
@@ -257,6 +257,16 @@ public:
 						((state.mode_state[arm] == manip_mode_t::MC_READY) ||
 						(state.mode_state[arm] == manip_mode_t::MC_HALT));
 				error = state.error[arm] != manip_error_t::MC_NO_ERROR;
+
+				if (error)
+				{
+					ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
+				}
+
+				if (completed)
+				{
+					ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
+				}
 			}
 
 			// publish the feedback

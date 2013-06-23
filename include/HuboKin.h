@@ -11,10 +11,10 @@
 
 namespace HK {
 
-  typedef Eigen::Matrix< double, 6, 1 > Vector6d;
-  typedef Eigen::Vector3d Vector3d;
-  typedef Eigen::Isometry3d Isometry3d;
-  typedef Eigen::Matrix< double, 6, 2 > Matrix62d;
+  typedef Eigen::Matrix< float, 6, 1 > Vector6f;
+  typedef Eigen::Vector3f Vector3f;
+  typedef Eigen::Isometry3f Isometry3f;
+  typedef Eigen::Matrix< float, 6, 2 > Matrix62f;
   typedef std::vector<int> IntArray;
 
   class HuboKin {
@@ -27,14 +27,14 @@ namespace HK {
 
     struct KinConstants {
 
-      double arm_l1, arm_l2, arm_l3, arm_l4;
-      double leg_l1, leg_l2, leg_l3, leg_l4, leg_l5, leg_l6;
+	  float arm_l1, arm_l2, arm_l3, arm_l4;
+	  float leg_l1, leg_l2, leg_l3, leg_l4, leg_l5, leg_l6;
 
-      Matrix62d arm_limits;
-      Matrix62d leg_limits;
+	  Matrix62f arm_limits;
+	  Matrix62f leg_limits;
     
-      Vector6d  arm_offset;
-      Vector6d  leg_offset;
+	  Vector6f  arm_offset;
+	  Vector6f  leg_offset;
 
       IntArray arm_mirror;
       IntArray leg_mirror;
@@ -42,36 +42,36 @@ namespace HK {
       KinConstants();
 
 
-      Matrix62d getArmLimits(int side) const;
-      Matrix62d getLegLimits(int side) const;
-      Vector6d  getArmOffset(int side) const;
-      Vector6d  getLegOffset(int side) const;
+	  Matrix62f getArmLimits(int side) const;
+	  Matrix62f getLegLimits(int side) const;
+	  Vector6f  getArmOffset(int side) const;
+	  Vector6f  getLegOffset(int side) const;
 
     };
 
     KinConstants kc;
 
-    static Matrix62d mirrorLimits(const Matrix62d& orig, const IntArray& mirror);
-    static Vector6d  mirrorAngles(const Vector6d& orig, const IntArray& mirror);
+	static Matrix62f mirrorLimits(const Matrix62f& orig, const IntArray& mirror);
+	static Vector6f  mirrorAngles(const Vector6f& orig, const IntArray& mirror);
 
-    static void DH2HG(Isometry3d &B, double t, double f, double r, double d);
+	static void DH2HG(Isometry3f &B, float t, float f, float r, float d);
 
-    void armFK(Isometry3d &B, const Vector6d &q, int side) const;
+	void armFK(Isometry3f &B, const Vector6f &q, int side) const;
 
-    void armFK(Isometry3d &B, const Vector6d &q, int side, 
-               const Isometry3d &endEffector) const;
+	void armFK(Isometry3f &B, const Vector6f &q, int side,
+			   const Isometry3f &endEffector) const;
 
-    void armIK(Vector6d &q, const Isometry3d& B, 
-               const Vector6d& qPrev, int side) const;
+	void armIK(Vector6f &q, const Isometry3f& B,
+			   const Vector6f& qPrev, int side) const;
 
-    void armIK(Vector6d &q, const Isometry3d& B, 
-               const Vector6d& qPrev, int side, 
-               const Isometry3d &endEffector) const;
+	void armIK(Vector6f &q, const Isometry3f& B,
+			   const Vector6f& qPrev, int side,
+			   const Isometry3f &endEffector) const;
 
-    void legFK(Isometry3d &B, const Vector6d &q, int side) const;
+	void legFK(Isometry3f &B, const Vector6f &q, int side) const;
 
-    void legIK(Vector6d &q, const Isometry3d& B, 
-               const Vector6d& qPrev, int side) const;
+	void legIK(Vector6f &q, const Isometry3f& B,
+			   const Vector6f& qPrev, int side) const;
 
 
   };

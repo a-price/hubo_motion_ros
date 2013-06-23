@@ -96,7 +96,7 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	poseA0.position.y = -0.45;
 	poseA0.position.z = -0.25;
 
-	Eigen::Quaterniond q; q.setFromTwoVectors(Eigen::Vector3d::UnitX(), -Eigen::Vector3d::UnitZ());
+	Eigen::Quaternionf q; q.setFromTwoVectors(Eigen::Vector3f::UnitX(), -Eigen::Vector3f::UnitZ());
 	poseA0.orientation.w = q.w();
 	poseA0.orientation.x = q.x();
 	poseA0.orientation.y = q.y();
@@ -127,7 +127,7 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	poseA2.position.y = -0.45;
 	poseA2.position.z = 0.25;
 
-	q.setFromTwoVectors(Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitZ());
+	q.setFromTwoVectors(Eigen::Vector3f::UnitX(), Eigen::Vector3f::UnitZ());
 	poseA2.orientation.w = q.w();
 	poseA2.orientation.x = q.x();
 	poseA2.orientation.y = q.y();

@@ -44,24 +44,24 @@
 namespace hubo_motion_ros
 {
 
-Eigen::Isometry3d toIsometry(geometry_msgs::Pose pose)
+Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose)
 {
-	Eigen::Isometry3d result = Eigen::Isometry3d::Identity();
-	Eigen::Vector3d trans(pose.position.x,pose.position.y,pose.position.z);
-	Eigen::Quaterniond quat(pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z);
+	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
+	Eigen::Vector3f trans(pose.position.x,pose.position.y,pose.position.z);
+	Eigen::Quaternionf quat(pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z);
 
 	result.translate(trans);
 	result.rotate(quat);
 
 	return result;
 }
-Eigen::Isometry3d toIsometry(tf::Transform pose)
+Eigen::Isometry3f toIsometry(tf::Transform pose)
 {
-	Eigen::Isometry3d result = Eigen::Isometry3d::Identity();
+	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
 	tf::Vector3 tVec = pose.getOrigin();
 	tf::Quaternion tQuat = pose.getRotation();
-	Eigen::Vector3d trans(tVec.x(),tVec.y(),tVec.z());
-	Eigen::Quaterniond quat(tQuat.w(),tQuat.x(),tQuat.y(),tQuat.z());
+	Eigen::Vector3f trans(tVec.x(),tVec.y(),tVec.z());
+	Eigen::Quaternionf quat(tQuat.w(),tQuat.x(),tQuat.y(),tQuat.z());
 
 	result.translate(trans);
 	result.rotate(quat);

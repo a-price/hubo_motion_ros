@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(hubo_motion_ros)
-set(BUILD_FLAGS "-std=c++0x")
+set(BUILD_FLAGS "-std=c++0x -Wno-enum-compare")
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS roscpp
@@ -98,6 +98,8 @@ file(GLOB unit_tests_source "src/tests/unit/*.cpp")
 list(SORT unit_tests_source)
 file(GLOB system_tests_source "src/tests/system/*.cpp")
 list(SORT system_tests_source)
+file(GLOB include_source "include/hubo_motion_ros/*.h")
+list(SORT include_source)
 
 file(GLOB include_source "include/hubo_motion_ros/*.h")
 qt4_wrap_cpp(MOC_FILES include/hubo_motion_ros/AchNetworkWidget.h include/hubo_motion_ros/hubo_motion_panel.h include/hubo_motion_ros/manip_tab.h)
@@ -117,7 +119,7 @@ message(STATUS "\n-- ROS NODES: ")
 foreach(node_src_file ${nodes_source})
 	get_filename_component(node_base ${node_src_file} NAME_WE)
 	message(STATUS "Adding ROS Node ${node_base}" )
-	add_executable(${node_base} ${node_src_file})
+        add_executable(${node_base} ${node_src_file} ${include_source})
 	target_link_libraries(${node_base} ${PROJECT_NAME})
 	add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
 	set_target_properties(${node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})

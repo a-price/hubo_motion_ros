@@ -12,6 +12,7 @@
 
 #include <hubo.h>
 
+const unsigned int HUBO_NUM_ARMS = 2;
 
 /**
  * \var HUBO_JOINT_NAMES
