@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(hubo_motion_ros)
-set(BUILD_FLAGS "-std=c++0x -Wno-enum-compare")
+set(BUILD_FLAGS "-std=c++0x -Wreturn-type -Wno-enum-compare")
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS roscpp
@@ -119,7 +119,7 @@ message(STATUS "\n-- ROS NODES: ")
 foreach(node_src_file ${nodes_source})
 	get_filename_component(node_base ${node_src_file} NAME_WE)
 	message(STATUS "Adding ROS Node ${node_base}" )
-        add_executable(${node_base} ${node_src_file} ${include_source})
+		add_executable(${node_base} ${node_src_file} ${include_source})
 	target_link_libraries(${node_base} ${PROJECT_NAME})
 	add_dependencies(${node_base} ${PROJECT_NAME}_gencpp)
 	set_target_properties(${node_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
