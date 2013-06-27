@@ -42,6 +42,27 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     connect(spacenavCheck, SIGNAL(toggled(bool)), this, SLOT(handleNavCheckToggle(bool)));
     checkLayout->addWidget(spacenavCheck, 0, Qt::AlignLeft);
 
+    sideSel = new QButtonGroup;
+    sideSel->setExclusive(true);
+    QVBoxLayout* selLayout = new QVBoxLayout;
+    leftSel = new QRadioButton;
+    leftSel->setText("Left");
+    leftSel->setToolTip("Control left arm with SpaceNav");
+    leftSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    connect(leftSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchLeft(bool)));
+    selLayout->addWidget(leftSel);
+    rightSel = new QRadioButton;
+    rightSel->setText("Right");
+    rightSel->setToolTip("Control right arm with SpaceNav");
+    rightSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    connect(rightSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchRight(bool)));
+    selLayout->addWidget(rightSel);
+
+    checkLayout->addLayout(selLayout);
+
+    rightSel->setChecked(true);
+
+
     QLabel* freqLab = new QLabel;
     freqLab->setText("Display Frequency:");
     freqLab->setToolTip("Rate (Hz) at which to display data from Liberty");
@@ -177,6 +198,30 @@ void SpacenavRelay::run()
     else // FIXME: Remove this
         alive = true;
 
+
+    for(int i=0; i<2; i++)
+        for(int j=0; j<3; j++)
+            pos[i][j] = state.pose[i].data[j];
+
+    for(int i=0; i<2; i++)
+    {
+        if(ACH_OK==manR || ACH_MISSED_FRAME==manR || ACH_STALE_FRAMES==manR) // FIXME: Remove this condition
+        {
+            std::cout << "Initializing euler angles\t" << ach_result_to_string(manR) << std::endl;
+            double q0 = /*state.pose[i].w;*/ 1; // TODO: FIXME
+            double q1 = state.pose[i].i;
+            double q2 = state.pose[i].j;
+            double q3 = state.pose[i].k;
+            angles[i][0] = atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2));
+            angles[i][1] = asin(2*(q0*q2 - q3*q1));
+            angles[i][2] = atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3));
+        }
+        else
+            angles[i] << 0, 0, 0;
+    }
+
+    sn_freq = 10;
+
     if(alive)
     {
         ros::Subscriber spacenavJoy = nh.subscribe("spacenav/joy", 1,
@@ -184,35 +229,50 @@ void SpacenavRelay::run()
 
         refClock.start();
 
-        for(int i=0; i<2; i++)
-            for(int j=0; j<3; j++)
-                pos[i][j] = state.pose[i].data[j];
-
-        if(ACH_OK==manR || ACH_MISSED_FRAME==manR || ACH_STALE_FRAMES==manR) // FIXME: Remove this condition
-        {
-            std::cout << "Initializing euler angles\t" << ach_result_to_string(manR) << std::endl;
-            double q0 = /*state.pose[RIGHT].w;*/ 1;
-            double q1 = state.pose[RIGHT].i;
-            double q2 = state.pose[RIGHT].j;
-            double q3 = state.pose[RIGHT].k;
-            angles[RIGHT][0] = atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2));
-            angles[RIGHT][1] = asin(2*(q0*q2 - q3*q1));
-            angles[RIGHT][2] = atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3));
-        }
-        else
-            angles[RIGHT] << 0, 0, 0;
-
-        sn_freq = 10;
-
         ros::Rate r(sn_freq);
 
-        rotationOn = false;
-        zOn = true;
+        restart = true;
 
         while(alive)
         {
+            if(restart)
+            {
+                side = queueSide;
+//                for(int i=0; i<2; i++)
+//                    for(int j=0; j<3; j++)
+//                        pos[i][j] = state.pose[i].data[j];
+
+//                if(ACH_OK==manR || ACH_MISSED_FRAME==manR || ACH_STALE_FRAMES==manR) // FIXME: Remove this condition
+//                {
+//                    std::cout << "Initializing euler angles\t" << ach_result_to_string(manR) << std::endl;
+//                    double q0 = state.pose[side].w;// 1; // TODO: FIXME
+//                    double q1 = state.pose[side].i;
+//                    double q2 = state.pose[side].j;
+//                    double q3 = state.pose[side].k;
+//                    angles[side][0] = atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2));
+//                    angles[side][1] = asin(2*(q0*q2 - q3*q1));
+//                    angles[side][2] = atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3));
+//                }
+//                else
+//                    angles[side] << 0, 0, 0;
+
+
+                rotationOn = false;
+                zOn = true;
+
+                for(int j=0; j<3; j++)
+                    cmd.pose[side].data[j] = pos[side][j];
+
+                cmd.pose[side].alpha = angles[side][0];
+                cmd.pose[side].beta = angles[side][1];
+                cmd.pose[side].gamma = angles[side][2];
+
+                restart = false;
+            }
+
             ros::spinOnce();
             r.sleep();
+
         }
 
         cmd.m_mode[0] = MC_HALT;
@@ -223,8 +283,8 @@ void SpacenavRelay::run()
         cmd.waistAngle = waistAngle;
         ach_put( &manipCmdChan, &cmd, sizeof(cmd) );
 
-        spacenavJoy.shutdown();
     }
+
 
     emit spacenavQuitting();
 }
@@ -276,20 +336,20 @@ void SpacenavRelay::spacenav_callback(const sensor_msgs::JoyConstPtr joystick)
             num = 2;
 
         for(int j=0; j<num; j++)
-            pos[RIGHT][j] += joystick->axes[j]*posScale;
+            pos[side][j] += joystick->axes[j]*posScale;
 
         for(int j=0; j<num; j++)
-            cmd.pose[RIGHT].data[j] = pos[RIGHT][j];
+            cmd.pose[side].data[j] = pos[side][j];
     }
 
     if(rotationOn)
     {
         for(int j=0; j<3; j++)
-            angles[RIGHT][j] += joystick->axes[j+3]*rotScale;
+            angles[side][j] += joystick->axes[j+3]*rotScale;
 
-        cmd.pose[RIGHT].alpha = angles[RIGHT][0];
-        cmd.pose[RIGHT].beta = angles[RIGHT][1];
-        cmd.pose[RIGHT].gamma = angles[RIGHT][2];
+        cmd.pose[side].alpha = angles[side][0];
+        cmd.pose[side].beta = angles[side][1];
+        cmd.pose[side].gamma = angles[side][2];
     }
 
     double elapsed = refClock.elapsed()/1000.0;
@@ -298,7 +358,7 @@ void SpacenavRelay::spacenav_callback(const sensor_msgs::JoyConstPtr joystick)
         if( elapsed > 1.0/updateFreq )
         {
             for(int j=0; j<7; j++)
-                emit refreshData(cmd.pose[RIGHT].data[j], RIGHT, j);
+                emit refreshData(cmd.pose[side].data[j], side, j);
             refClock.restart();
         }
     }

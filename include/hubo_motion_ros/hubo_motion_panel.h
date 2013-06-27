@@ -119,13 +119,22 @@ public:
 
     double sn_freq;
 
+    int side;
+    int queueSide;
+    bool restart;
+
     QTime refClock;
+
+public Q_SLOTS:
+    void switchLeft(bool active);
+    void switchRight(bool active);
 
 protected:
     virtual void run();
 
 signals:
     void spacenavQuitting();
+
 };
 
 class HuboMotionPanel : public rviz::Panel
@@ -154,6 +163,10 @@ private:
     QPushButton* openRB;
     QPushButton* loosenLB;
     QPushButton* loosenRB;
+
+    QButtonGroup* sideSel;
+    QRadioButton* leftSel;
+    QRadioButton* rightSel;
 
     QSlider* waistSlide;
     double waistScale;

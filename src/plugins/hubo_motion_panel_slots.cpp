@@ -47,6 +47,23 @@ void ManipRelay::getWaistValue(int val)
     waistAngle = val*M_PI/180.0;
 }
 
+void SpacenavRelay::switchLeft(bool active)
+{
+    if(active)
+    {
+        queueSide = LEFT;
+        restart = true;
+    }
+}
+
+void SpacenavRelay::switchRight(bool active)
+{
+    if(active)
+    {
+        queueSide = RIGHT;
+        restart = true;
+    }
+}
 
 void ManipRelay::graspL() { cmd.m_grasp[LEFT] = MC_GRASP_NOW; }
 void ManipRelay::graspR() { cmd.m_grasp[RIGHT] = MC_GRASP_NOW; }
