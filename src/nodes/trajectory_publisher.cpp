@@ -45,6 +45,7 @@
 #include <hubo-zmp.h>
 
 #include "hubo_motion_ros/hubo_joint_names.h"
+#include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
 namespace hubo_motion_ros
@@ -57,10 +58,18 @@ namespace hubo_motion_ros
 class ZMPTrajectoryPublisher
 {
 public:
-	ZMPTrajectoryPublisher() :
-		m_TrajChannel("zmp")
+	enum HUBO_MODEL
+	{
+		HUBOPLUS,
+		DRCHUBO
+	};
+
+	ZMPTrajectoryPublisher(HUBO_MODEL hubo) :
+		m_TrajChannel("hubo-zmp-traj")
 	{
 		m_TrajectoryPublisher = m_nh.advertise<trajectory_msgs::JointTrajectory>("/joint_trajectory", 1);
+		m_HuboModel = hubo;
+		ROS_INFO_STREAM("Hubo: " << m_HuboModel);
 	}
 
 	void publishTrajectory(const uint32_t  waitTime)
@@ -73,7 +82,18 @@ public:
 		// Add all joint names
 		for (unsigned joint = WST; joint <= LF5; joint++)
 		{
-			jt.joint_names.push_back(HUBO_JOINT_NAMES[joint]);
+			std::string jointName;
+			if (HUBO_MODEL::DRCHUBO == m_HuboModel)
+			{
+				std::string jName = DRCHUBO_URDF_JOINT_NAMES[joint];
+				if (jName == "") {continue;}
+				jt.joint_names.push_back(jName);
+				ROS_INFO("Adding a DRC-Hubo Joint!");
+			}
+			else
+			{
+				jt.joint_names.push_back(HUBO_URDF_JOINT_NAMES[joint]);
+			}
 		}
 
 		// Loop through all active trajectory steps
@@ -85,11 +105,15 @@ public:
 			// TODO: do we need to do finite difference method to get V&A?
 			for (unsigned joint = WST; joint <= LF5; joint++)
 			{
+				std::string jName = DRCHUBO_URDF_JOINT_NAMES[joint];
+				if (jName == "") {continue;}
 				point.positions.push_back(trajectory.traj[i].angles[joint]);
 			}
 
 			// Compute the time from the beginning
-			point.time_from_start = ros::Duration(((double)i) * 1/(double)ZMP_TRAJ_FREQ_HZ);
+			point.time_from_start = ros::Duration(((float)i) * 1.0/(float)ZMP_TRAJ_FREQ_HZ);
+
+			jt.points.push_back(point);
 		}
 
 		m_TrajectoryPublisher.publish(jt);
@@ -100,16 +124,32 @@ protected:
 
 	ros::NodeHandle m_nh;                   ///< ROS NodeHandle for advertising topics
 	ros::Publisher m_TrajectoryPublisher;   ///< ROS Publisher to publish new joint_trajectory messages
+	HUBO_MODEL m_HuboModel;                 ///< Switches between different joint names for different models
 };
 
 } // namespace hubo_motion_ros
+
+using namespace hubo_motion_ros;
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "trajectory_publisher");
 	ROS_INFO("Started trajectory_publisher.");
 
-	hubo_motion_ros::ZMPTrajectoryPublisher publisher;
+	ros::NodeHandle nh;
+	std::string huboModel;
+	ZMPTrajectoryPublisher::HUBO_MODEL model;
+	nh.param<std::string>("hubo_model", huboModel, "drc_hubo");
+
+	if ("drc_hubo" == huboModel)
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::DRCHUBO;
+	else if ("hubo_plus" == huboModel)
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+	else
+		model = ZMPTrajectoryPublisher::HUBO_MODEL::HUBOPLUS;
+
+
+	hubo_motion_ros::ZMPTrajectoryPublisher publisher(model);
 
 	while (ros::ok())
 	{

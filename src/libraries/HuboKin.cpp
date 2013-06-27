@@ -4,17 +4,17 @@ using namespace std;
 
 namespace HK { 
 
-static inline double mod(double x, double y) {
+static inline float mod(float x, float y) {
   if (0 == y)
     return x;
   return x - y * floor(x/y);
 }
 
-static inline double wrapToPi(double fAng) {
+static inline float wrapToPi(float fAng) {
   return mod(fAng + M_PI, 2*M_PI) - M_PI;
 }
 
-static const double zeroSize = 1e-9;
+static const float zeroSize = 1e-9;
 
 HuboKin::KinConstants::KinConstants() {
 
@@ -32,7 +32,7 @@ HuboKin::KinConstants::KinConstants() {
   arm_l1 = 214.5/1000.0;        // neck to shoulder Y
   arm_l2 = 179.14/1000.0;       // ?
   arm_l3 = 181.59/1000.0;       // ?
-  arm_l4 = 4.75*25.4/1000.0;    // ?
+  arm_l4 = 3*25.4/1000.0;       // ?
 
   leg_l1 = (79.5+107)/1000.0;   // neck to waist Z 
   leg_l2 = 88.43/1000.0;        // waist to hip  Y
@@ -73,15 +73,15 @@ HuboKin::KinConstants::KinConstants() {
 }
 
  
-Matrix62d HuboKin::mirrorLimits(const Matrix62d& orig,
+Matrix62f HuboKin::mirrorLimits(const Matrix62f& orig,
                                          const IntArray& mirror) {
   
-  Matrix62d limits = orig;
+  Matrix62f limits = orig;
   
   for (size_t i=0; i<mirror.size(); ++i) {
     int ax = mirror[i];
-    double& lo = limits(ax,0);
-    double& hi = limits(ax,1);
+	float& lo = limits(ax,0);
+	float& hi = limits(ax,1);
     swap(lo,hi);
     lo *= -1;
     hi *= -1;
@@ -91,10 +91,10 @@ Matrix62d HuboKin::mirrorLimits(const Matrix62d& orig,
 
 }
 
-Vector6d HuboKin::mirrorAngles(const Vector6d& orig,
+Vector6f HuboKin::mirrorAngles(const Vector6f& orig,
                                         const IntArray& mirror) { 
   
-  Vector6d angles = orig;
+  Vector6f angles = orig;
   
   for (size_t i=0; i<mirror.size(); ++i) {
     int ax = mirror[i];
@@ -105,7 +105,7 @@ Vector6d HuboKin::mirrorAngles(const Vector6d& orig,
 
 }
 
-Matrix62d HuboKin::KinConstants::getArmLimits(int side) const {
+Matrix62f HuboKin::KinConstants::getArmLimits(int side) const {
   if (side == SIDE_RIGHT) {
     return arm_limits;
   } else {
@@ -113,7 +113,7 @@ Matrix62d HuboKin::KinConstants::getArmLimits(int side) const {
   }
 }
 
-Matrix62d HuboKin::KinConstants::getLegLimits(int side) const {
+Matrix62f HuboKin::KinConstants::getLegLimits(int side) const {
   if (side == SIDE_RIGHT) {
     return leg_limits;
   } else {
@@ -121,7 +121,7 @@ Matrix62d HuboKin::KinConstants::getLegLimits(int side) const {
   }
 }
 
-Vector6d HuboKin::KinConstants::getArmOffset(int side) const {
+Vector6f HuboKin::KinConstants::getArmOffset(int side) const {
   if (side == SIDE_RIGHT) {
     return arm_offset;
   } else {
@@ -129,7 +129,7 @@ Vector6d HuboKin::KinConstants::getArmOffset(int side) const {
   }
 }
 
-Vector6d HuboKin::KinConstants::getLegOffset(int side) const {
+Vector6f HuboKin::KinConstants::getLegOffset(int side) const {
   if (side == SIDE_RIGHT) {
     return leg_offset;
   } else {
@@ -138,20 +138,20 @@ Vector6d HuboKin::KinConstants::getLegOffset(int side) const {
 }
 
 
-void HuboKin::DH2HG(Isometry3d &B, double t, double f, double r, double d) {
+void HuboKin::DH2HG(Isometry3f &B, float t, float f, float r, float d) {
 
   // Convert DH parameters (standard convention) to Homogenuous transformation matrix.
-  B = Eigen::Matrix4d::Identity();
+  B = Eigen::Matrix4f::Identity();
     
-  B.translate(Eigen::Vector3d(0.,0.,d));
-  B.rotate(Eigen::AngleAxisd(t, Eigen::Vector3d::UnitZ()));
-  B.translate(Eigen::Vector3d(r,0,0));
-  B.rotate(Eigen::AngleAxisd(f, Eigen::Vector3d::UnitX()));
+  B.translate(Eigen::Vector3f(0.,0.,d));
+  B.rotate(Eigen::AngleAxisf(t, Eigen::Vector3f::UnitZ()));
+  B.translate(Eigen::Vector3f(r,0,0));
+  B.rotate(Eigen::AngleAxisf(f, Eigen::Vector3f::UnitX()));
     
 }
 
-void HuboKin::armFK(Isometry3d &B, const Vector6d &q, int side) const {
-  Isometry3d hand;
+void HuboKin::armFK(Isometry3f &B, const Vector6f &q, int side) const {
+  Isometry3f hand;
   hand(0,0) =  1; hand(0,1) =  0; hand(0,2) = 0; hand(0,3) =   0;
   hand(1,0) =  0; hand(1,1) =  0; hand(1,2) =-1; hand(1,3) =   0;
   hand(2,0) =  0; hand(2,1) =  1; hand(2,2) = 0; hand(2,3) =   0;
@@ -159,35 +159,35 @@ void HuboKin::armFK(Isometry3d &B, const Vector6d &q, int side) const {
   armFK(B, q, side, hand);
 }
 
-void HuboKin::armFK(Isometry3d &B, const Vector6d &q, int side, 
-                    const Isometry3d &endEffector) const {
+void HuboKin::armFK(Isometry3f &B, const Vector6f &q, int side,
+                    const Isometry3f &endEffector) const {
 
   // Declarations
-  Isometry3d neck, hand, T;
+  Isometry3f neck, hand, T;
 
 #ifndef HUBOKIN_USE_KCONSTANTS
 
-  Eigen::MatrixXd limits(6,2);
-  Vector6d offset; offset.setZero();
+  Eigen::MatrixXf limits(6,2);
+  Vector6f offset; offset.setZero();
 
   // Parameters
-  double l1 = 214.5/1000.0;
-  double l2 = 179.14/1000.0;
-  double l3 = 181.59/1000.0;
-  double l4 = 4.75*25.4/1000.0;
+  float l1 = 214.5/1000.0;
+  float l2 = 179.14/1000.0;
+  float l3 = 181.59/1000.0;
+  float l4 = 3*25.4/1000.0;
 
 #else
 
-  const double& l1 = kc.arm_l1;
-  const double& l2 = kc.arm_l2;
-  const double& l3 = kc.arm_l3;
-  const double& l4 = kc.arm_l4;
-  //const Matrix62d limits = kc.getArmLimits(side);
-  const Vector6d offset = kc.getArmOffset(side);
+  const float& l1 = kc.arm_l1;
+  const float& l2 = kc.arm_l2;
+  const float& l3 = kc.arm_l3;
+  const float& l4 = kc.arm_l4;
+  //const Matrix62f limits = kc.getArmLimits(side);
+  const Vector6f offset = kc.getArmOffset(side);
 
 #endif
     
-  Vector6d t, f, r, d;
+  Vector6f t, f, r, d;
   t <<  M_PI/2, -M_PI/2,  M_PI/2,       0,       0,  M_PI/2;
   f <<  M_PI/2,  M_PI/2, -M_PI/2,  M_PI/2, -M_PI/2,       0;
   r <<       0,       0,       0,       0,       0,      l4;
@@ -246,9 +246,9 @@ void HuboKin::armFK(Isometry3d &B, const Vector6d &q, int side,
     
 }
 
-void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int side) const {
+void HuboKin::armIK(Vector6f &q, const Isometry3f& B, const Vector6f& qPrev, int side) const {
   // Hand	
-  Isometry3d hand;
+  Isometry3f hand;
   hand(0,0) =  1; hand(0,1) =  0; hand(0,2) = 0; hand(0,3) =   0;
   hand(1,0) =  0; hand(1,1) =  0; hand(1,2) =-1; hand(1,3) =   0;
   hand(2,0) =  0; hand(2,1) =  1; hand(2,2) = 0; hand(2,3) =   0;
@@ -257,42 +257,42 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
 }
   
 
-void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int side, 
-                    const Isometry3d &endEffector) const {
+void HuboKin::armIK(Vector6f &q, const Isometry3f& B, const Vector6f& qPrev, int side,
+                    const Isometry3f &endEffector) const {
 
-  Eigen::ArrayXXd qAll(6,8);
+  Eigen::ArrayXXf qAll(6,8);
     
   // Declarations
-  Isometry3d neck, neckInv, endEffectorInv, BInv;
-  double nx, sx, ax, px;
-  double ny, sy, ay, py;
-  double nz, sz, az, pz;
-  double q1, q2, q3, q4, q5, q6;
-  double qP1, qP3;
-  double qT;
+  Isometry3f neck, neckInv, endEffectorInv, BInv;
+  float nx, sx, ax, px;
+  float ny, sy, ay, py;
+  float nz, sz, az, pz;
+  float q1, q2, q3, q4, q5, q6;
+  float qP1, qP3;
+  float qT;
   Eigen::Matrix<int, 8, 3> m;
     
-  double S2, S4, S5, S6;
-  double C2, C4, C5, C6;
+  float S2, S4, S5, S6;
+  float C2, C4, C5, C6;
     
 #ifndef HUBOKIN_USE_KCONSTANTS
 
-  Eigen::MatrixXd limits(6,2);
-  Vector6d offset; offset.setZero();
+  Eigen::MatrixXf limits(6,2);
+  Vector6f offset; offset.setZero();
   // Parameters
-  double l1 = 214.5/1000.0;
-  double l2 = 179.14/1000.0;
-  double l3 = 181.59/1000.0;
-  double l4 = 4.75*25.4/1000.0;
+  float l1 = 214.5/1000.0;
+  float l2 = 179.14/1000.0;
+  float l3 = 181.59/1000.0;
+  float l4 = 3*25.4/1000.0;
 
 #else
 
-  const double& l1 = kc.arm_l1;
-  const double& l2 = kc.arm_l2;
-  const double& l3 = kc.arm_l3;
-  const double& l4 = kc.arm_l4;
-  Matrix62d limits = kc.getArmLimits(side);
-  Vector6d offset = kc.getArmOffset(side);
+  const float& l1 = kc.arm_l1;
+  const float& l2 = kc.arm_l2;
+  const float& l3 = kc.arm_l3;
+  const float& l4 = kc.arm_l4;
+  Matrix62f limits = kc.getArmLimits(side);
+  Vector6f offset = kc.getArmOffset(side);
 
 #endif
 
@@ -372,7 +372,7 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   for (int i = 0; i < 8; i++) {
         
     // Solve for q4
-    C4 = max(min((2*l4*px - l2*l2 - l3*l3 + l4*l4 + px*px + py*py + pz*pz)/(2*l2*l3),1.0),-1.0);
+	C4 = max(min((2*l4*px - l2*l2 - l3*l3 + l4*l4 + px*px + py*py + pz*pz)/(2*l2*l3),1.0f),-1.0f);
     if (fabs(C4 - 1) < zeroSize) { // Case 1: q4 == 0
             
       // Set q4
@@ -382,19 +382,19 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
       q3 = qP3;
             
       // Solve for q6
-      S6 = max(min( py/(l2 + l3), 1.0),-1.0);
-      C6 = max(min( -(l4 + px)/(l2 + l3), 1.0), -1.0);
+	  S6 = max(min( py/(l2 + l3), 1.0f),-1.0f);
+	  C6 = max(min( -(l4 + px)/(l2 + l3), 1.0f), -1.0f);
       q6 = atan2(S6,C6);
             
 
       // Solve for q2
-      S2 = max(min( C4*C6*ax - C4*S6*ay, 1.0),-1.0);
+	  S2 = max(min( C4*C6*ax - C4*S6*ay, 1.0f),-1.0f);
       if (fabs(S2 - 1) < zeroSize) {
         q2 = M_PI/2;
       } else if (fabs(S2 + 1) < zeroSize) {
         q2 = -M_PI/2;
       } else {
-        complex<double> radical = 1-S2*S2;
+        complex<float> radical = 1-S2*S2;
         q2 = atan2(S2,m(i,2)*real(sqrt(radical)));
       }
             
@@ -435,7 +435,7 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
     } else {
             
       // Solve for q4
-      complex<double> radical = 1-C4*C4;
+      complex<float> radical = 1-C4*C4;
       q4 = atan2(m(i,0)*real(sqrt(radical)),C4);
             
       // Solve for q5
@@ -452,12 +452,12 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
             
       // Solve for q6
       C5 = cos(q5);
-      S6 =max(min( (C5*S4*l2 + (py*(l3 + C4*l2 - (C5*S4*l2*py)/(l4 + px)))/(l4 + px + py*py/(l4 + px)))/(l4 + px), 1.0),-1.0);
-      C6 = max(min( -(l3 + C4*l2 - (C5*S4*l2*py)/(l4 + px))/(l4 + px + py*py/(l4 + px)), 1.0),-1.0);
+	  S6 =max(min( (C5*S4*l2 + (py*(l3 + C4*l2 - (C5*S4*l2*py)/(l4 + px)))/(l4 + px + py*py/(l4 + px)))/(l4 + px), 1.0f),-1.0f);
+	  C6 = max(min( -(l3 + C4*l2 - (C5*S4*l2*py)/(l4 + px))/(l4 + px + py*py/(l4 + px)), 1.0f),-1.0f);
       q6 = atan2(S6,C6);
             
       // Solve for q2
-      S2 = max(min(ax*(C4*C6 - C5*S4*S6) - ay*(C4*S6 + C5*C6*S4) - S4*S5*az,1.0),-1.0);
+	  S2 = max(min(ax*(C4*C6 - C5*S4*S6) - ay*(C4*S6 + C5*C6*S4) - S4*S5*az,1.0f),-1.0f);
       if (fabs(S2 - 1) < zeroSize) {
         q2 = M_PI/2;
       } else if (fabs(S2 + 1) < zeroSize) {
@@ -524,8 +524,8 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   }
   // TODO: Find best solution using better method
 
-  Eigen::ArrayXd qDiff(6,1); qDiff.setZero();
-  Eigen::ArrayXd qDiffSum(8,1);
+  Eigen::ArrayXf qDiff(6,1); qDiff.setZero();
+  Eigen::ArrayXf qDiffSum(8,1);
   bool withinLim[8];
   int minInd;
 
@@ -568,7 +568,7 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
         // if the solution doesn't have all the joints within the limits...
         else
           // set the difference for that solution to infinity
-          qDiffSum(i) = std::numeric_limits<double>::infinity();
+          qDiffSum(i) = std::numeric_limits<float>::infinity();
       }
       // and take the solution closest to previous solution
       qDiffSum.minCoeff(&minInd);
@@ -580,14 +580,14 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
       // then for each solution...
       for( int i=0; i<8; i++)
         {
-          // create a 6d vector of angles of solution i
-          Vector6d qtemp = qAll.col(i).matrix();
+		  // create a 6f vector of angles of solution i
+		  Vector6f qtemp = qAll.col(i).matrix();
           // take the min of the angles and the joint upper limits
           qtemp = qtemp.cwiseMin(limits.col(1));
           // then take the max of those angles and the joint lower limits
           qtemp = qtemp.cwiseMax(limits.col(0));
-          // create an Isometry3d 4x4 matrix for the temp pose
-          Isometry3d Btemp;
+          // create an Isometry3f 4x4 matrix for the temp pose
+          Isometry3f Btemp;
           // find the pose associated with the temp angles
           armFK( Btemp, qtemp, side );
           // calculate the distance from previous pose to temp pose locations
@@ -605,38 +605,38 @@ void HuboKin::armIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   //q = q.cwiseMax(limits.col(0));
 }
 
-void HuboKin::legFK(Isometry3d &B, const Vector6d &q, int side) const {
+void HuboKin::legFK(Isometry3f &B, const Vector6f &q, int side) const {
   // Declarations
-  Isometry3d neck, waist, T;
+  Isometry3f neck, waist, T;
 
 #ifndef HUBOKIN_USE_KCONSTANTS
 
-  Eigen::MatrixXd limits(6,2);
-  Vector6d offset; offset.setZero();
+  Eigen::MatrixXf limits(6,2);
+  Vector6f offset; offset.setZero();
   
   // Parameters
-  double l1 = (79.5+107)/1000.0;
-  double l2 = 88.43/1000.0;
-  double l3 = (289.47-107)/1000.0;
-  double l4 = 300.03/1000.0;
-  double l5 = 300.38/1000.0;
-  double l6 = 94.97/1000.0;
+  float l1 = (79.5+107)/1000.0;
+  float l2 = 88.43/1000.0;
+  float l3 = (289.47-107)/1000.0;
+  float l4 = 300.03/1000.0;
+  float l5 = 300.38/1000.0;
+  float l6 = 94.97/1000.0;
   
 #else
 
-  const double& l1 = kc.leg_l1;
-  const double& l2 = kc.leg_l2;
-  const double& l3 = kc.leg_l3;
-  const double& l4 = kc.leg_l4;
-  const double& l5 = kc.leg_l5;
-  const double& l6 = kc.leg_l6;
-  //const Matrix62d limits = kc.getLegLimits(side);
-  const Vector6d offset = kc.getLegOffset(side);
+  const float& l1 = kc.leg_l1;
+  const float& l2 = kc.leg_l2;
+  const float& l3 = kc.leg_l3;
+  const float& l4 = kc.leg_l4;
+  const float& l5 = kc.leg_l5;
+  const float& l6 = kc.leg_l6;
+  //const Matrix62f limits = kc.getLegLimits(side);
+  const Vector6f offset = kc.getLegOffset(side);
 
 #endif
 
   // Denavit-Hartenberg parameters 
-  Vector6d t, f, r, d;
+  Vector6f t, f, r, d;
   t <<       0, -M_PI/2,       0,       0,       0,       0;
   f <<  M_PI/2, -M_PI/2,       0,       0,  M_PI/2,       0;
   r <<       0,       0,      l4,      l5,       0,      l6;
@@ -696,44 +696,44 @@ void HuboKin::legFK(Isometry3d &B, const Vector6d &q, int side) const {
   }
 }
 
-void HuboKin::legIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int side) const {
-  Eigen::ArrayXXd qAll(6,8);
+void HuboKin::legIK(Vector6f &q, const Isometry3f& B, const Vector6f& qPrev, int side) const {
+  Eigen::ArrayXXf qAll(6,8);
     
   // Declarations
-  Isometry3d neck, neckInv, waist, waistInv, BInv;
-  double nx, sx, ax, px;
-  double ny, sy, ay, py;
-  double nz, sz, az, pz;
-  double q1, q2, q3, q4, q5, q6;
-  double C45, psi, q345;
+  Isometry3f neck, neckInv, waist, waistInv, BInv;
+  float nx, sx, ax, px;
+  float ny, sy, ay, py;
+  float nz, sz, az, pz;
+  float q1, q2, q3, q4, q5, q6;
+  float C45, psi, q345;
   Eigen::Matrix<int, 8, 3> m;
     
-  double S2, S4, S6;
-  double C2, C4, C5, C6;
+  float S2, S4, S6;
+  float C2, C4, C5, C6;
 
 #ifndef HUBOKIN_USE_KCONSTANTS    
 
-  Eigen::MatrixXd limits(6,2);
-  Vector6d offset; offset.setZero();
+  Eigen::MatrixXf limits(6,2);
+  Vector6f offset; offset.setZero();
 
   // Parameters
-  double l1 = (79.5+107)/1000.0;
-  double l2 = 88.43/1000.0;
-  double l3 = (289.47-107)/1000.0;
-  double l4 = 300.03/1000.0;
-  double l5 = 300.38/1000.0;
-  double l6 = 94.97/1000.0;
+  float l1 = (79.5+107)/1000.0;
+  float l2 = 88.43/1000.0;
+  float l3 = (289.47-107)/1000.0;
+  float l4 = 300.03/1000.0;
+  float l5 = 300.38/1000.0;
+  float l6 = 94.97/1000.0;
 
 #else
 
-  const double& l1 = kc.leg_l1;
-  const double& l2 = kc.leg_l2;
-  const double& l3 = kc.leg_l3;
-  const double& l4 = kc.leg_l4;
-  const double& l5 = kc.leg_l5;
-  const double& l6 = kc.leg_l6;
-  const Matrix62d limits = kc.getLegLimits(side);
-  const Vector6d offset = kc.getLegOffset(side);
+  const float& l1 = kc.leg_l1;
+  const float& l2 = kc.leg_l2;
+  const float& l3 = kc.leg_l3;
+  const float& l4 = kc.leg_l4;
+  const float& l5 = kc.leg_l5;
+  const float& l6 = kc.leg_l6;
+  const Matrix62f limits = kc.getLegLimits(side);
+  const Vector6f offset = kc.getLegOffset(side);
 
 #endif
 
@@ -805,7 +805,7 @@ void HuboKin::legIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   for (int i = 0; i < 8; i++)
     {
       C4 = ((l6 + px)*(l6 + px) - l4*l4 - l5*l5 + py*py + pz*pz)/(2*l4*l5);
-      complex<double> radical = 1-C4*C4;
+      complex<float> radical = 1-C4*C4;
       q4 = atan2(m(i,0)*real(sqrt(radical)),C4);
 
       S4 = sin(q4);
@@ -855,8 +855,8 @@ void HuboKin::legIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
   }
 
   // Find best solution
-  Eigen::ArrayXd qDiff(6,1); qDiff.setZero();
-  Eigen::ArrayXd qDiffSum(8,1);
+  Eigen::ArrayXf qDiff(6,1); qDiff.setZero();
+  Eigen::ArrayXf qDiffSum(8,1);
   bool withinLim[8];
   int minInd;
 
@@ -902,7 +902,7 @@ void HuboKin::legIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
           // if the solution doesn't have all the joints within the limits...
           else
             // set the difference for that solution to infinity
-            qDiffSum(i) = std::numeric_limits<double>::infinity();
+            qDiffSum(i) = std::numeric_limits<float>::infinity();
         }
       // and take the solution closest to previous solution
       qDiffSum.minCoeff(&minInd);
@@ -915,14 +915,14 @@ void HuboKin::legIK(Vector6d &q, const Isometry3d& B, const Vector6d& qPrev, int
       // then for each solution...
       for(int i=0; i<8; i++)
         {
-          // create a 6d vector of angles of solution i
-          Vector6d qtemp = qAll.col(i).matrix();
+		  // create a 6f vector of angles of solution i
+		  Vector6f qtemp = qAll.col(i).matrix();
           // take the min of the angles and the joint upper limits
           qtemp = qtemp.cwiseMin(limits.col(1));
           // then take the max of those angles and the joint lower limits
           qtemp = qtemp.cwiseMax(limits.col(0));
-          // create an Isometry3d 4x4 matrix for the temp pose
-          Isometry3d Btemp;
+          // create an Isometry3f 4x4 matrix for the temp pose
+          Isometry3f Btemp;
           // find the pose associated with the temp angles
           legFK( Btemp, qtemp, side );
           // calculate the distance from previous pose to temp pose locations

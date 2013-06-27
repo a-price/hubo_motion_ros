@@ -1,7 +1,7 @@
 /**
  *
  * \file PoseConverter.cpp
- * \brief 
+ * \brief
  *
  * \author Andrew Price
  * \date May 30, 2013
@@ -44,59 +44,43 @@
 namespace hubo_motion_ros
 {
 
-Eigen::Isometry3d toIsometry(geometry_msgs::Pose pose)
+Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose)
 {
-	Eigen::Isometry3d result = Eigen::Isometry3d::Identity();
-	Eigen::Vector3d trans(pose.position.x,pose.position.y,pose.position.z);
-	Eigen::Quaterniond quat(pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z);
+	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
+	Eigen::Vector3f trans(pose.position.x,pose.position.y,pose.position.z);
+	Eigen::Quaternionf quat(pose.orientation.w,pose.orientation.x,pose.orientation.y,pose.orientation.z);
 
 	result.translate(trans);
 	result.rotate(quat);
 
 	return result;
 }
-Eigen::Isometry3d toIsometry(tf::Transform pose)
+Eigen::Isometry3f toIsometry(tf::Transform pose)
 {
-	Eigen::Isometry3d result = Eigen::Isometry3d::Identity();
+	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
 	tf::Vector3 tVec = pose.getOrigin();
 	tf::Quaternion tQuat = pose.getRotation();
-	Eigen::Vector3d trans(tVec.x(),tVec.y(),tVec.z());
-	Eigen::Quaterniond quat(tQuat.w(),tQuat.x(),tQuat.y(),tQuat.z());
+	Eigen::Vector3f trans(tVec.x(),tVec.y(),tVec.z());
+	Eigen::Quaternionf quat(tQuat.w(),tQuat.x(),tQuat.y(),tQuat.z());
 
 	result.translate(trans);
 	result.rotate(quat);
 
 	return result;
 }
-//
-//tf::Transform toTF(geometry_msgs::Pose pose)
-//{
-//
-//}
-//tf::Transform toTF(Eigen::Isometry3d pose)
-//{
-//
-//}
-//
-geometry_msgs::Pose toPose(Eigen::Isometry3d pose)
+
+tf::Transform toTF(geometry_msgs::Pose pose)
 {
-	geometry_msgs::Pose result;
-	Eigen::Vector3d eTrans = pose.translation();
-	Eigen::Quaterniond eQuat(pose.rotation());
-
-	result.position.x = eTrans[0];
-	result.position.y = eTrans[1];
-	result.position.z = eTrans[2];
-	result.orientation.w = eQuat.w();
-	result.orientation.x = eQuat.x();
-	result.orientation.y = eQuat.y();
-	result.orientation.z = eQuat.z();
-
-	return result;
+	tf::Transform newTF;
+	tf::poseMsgToTF(pose, newTF);
+	return newTF;
 }
-//geometry_msgs::Pose toPose(tf::Transform pose)
-//{
-//
-//}
+
+geometry_msgs::Pose toPose(tf::Transform pose)
+{
+	geometry_msgs::Pose newPose;
+	tf::poseTFToMsg(pose, newPose);
+	return newPose;
+}
 
 } /* namespace hubo_manipulation_planner */

@@ -80,6 +80,8 @@ protected:
 	std::string action_name_j_;
 	std::string action_name_p_;
 
+	ros::Publisher finalHandPub;
+
 	// create messages that are used to publish feedback/result
 	hubo_motion_ros::ExecutePoseTrajectoryFeedback feedback_p_;
 	hubo_motion_ros::ExecutePoseTrajectoryResult result_p_;
@@ -110,6 +112,8 @@ public:
 		asj_.start();
 		goalCount = 1;
 		ROS_INFO("Constructed Server.");
+
+		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
 	}
 
 	~HuboManipulationAction(void)
@@ -120,7 +124,7 @@ public:
 	{
 #ifdef JOINTS_NOT_IMPLEMENTED
 		HK::HuboKin kinematics;
-		std::vector<Eigen::Isometry3d> poses(goal->JointTargets.points.size());
+		std::vector<Eigen::Isometry3f> poses(goal->JointTargets.points.size());
 		ros::Time tStart = ros::Time::now();
 		ros::Duration sleepTime;
 
@@ -129,7 +133,7 @@ public:
 
 		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
 		{
-			HK::Vector6d q;
+			HK::Vector6f q;
 			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
 			{
 				unsigned pos = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
@@ -251,8 +255,18 @@ public:
 
 				completed = completed &&
 						((state.mode_state[arm] == manip_mode_t::MC_READY) ||
-						(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
+						(state.mode_state[arm] == manip_mode_t::MC_HALT));
 				error = state.error[arm] != manip_error_t::MC_NO_ERROR;
+
+				if (error)
+				{
+					ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
+				}
+
+				if (completed)
+				{
+					ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
+				}
 			}
 
 			// publish the feedback
@@ -265,9 +279,30 @@ public:
 #endif
 	}
 
+	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
+	{
+		hubo_manip_cmd_t cmd;
+		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+		goalCount++;
+
+		// Set the initial hand state
+		for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
+			cmd.interrupt[armIdx] = interrupting;
+			cmd.goalID[armIdx] = goalCount;
+		}
+
+		cmdChannel.pushState(cmd);
+	}
+
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
 	{
 		ROS_INFO("New Pose!");
+		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
 		result_p_.Success = false;
@@ -292,7 +327,7 @@ public:
 			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
 			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
 			ROS_INFO("Hand: %lu", armIdx);
-			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand.\n\n\n\n" : "Opening hand.\n\n\n\n");
+			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand." : "Opening hand.");
 			cmd.interrupt[armIdx] = true;
 			cmd.goalID[armIdx] = goalCount;
 		}
@@ -309,6 +344,7 @@ public:
 			preempted = false, error = false, completed = false;
 			ROS_INFO("Pose # %i", poseIter);
 			tOut = ros::Time::now() + ros::Duration(10,0);
+			currentPoses.poses.clear();
 			goalCount++;
 
 			// Build cmd packet by iterating through all arms provided
@@ -344,7 +380,14 @@ public:
 				pose.w = goalPose.orientation.w;
 
 				cmd.pose[armIdx] = pose;
+
+				currentPoses.poses.push_back(goalPose);
 			}
+
+			// Publish the target hand positions for debugging purposes
+			currentPoses.header.stamp = ros::Time::now();
+			currentPoses.header.frame_id = "/Body_Torso";
+			finalHandPub.publish(currentPoses);
 
 
 			// NB: the feedback publishing must be nested here, since the protocol only defines one pose at a time.
@@ -400,7 +443,7 @@ public:
 
 					completed = completed &&
 								((state.mode_state[arm] == manip_mode_t::MC_READY) ||
-								(state.mode_state[arm] == manip_mode_t::MC_STOPPED));
+								(state.mode_state[arm] == manip_mode_t::MC_HALT));
 					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
 					if (error)
 					{
@@ -417,6 +460,8 @@ public:
 				asp_.publishFeedback(feedback_p_);
 			}
 		}
+
+		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
 
 		// return the result
 		if (error && completed)
@@ -440,6 +485,7 @@ public:
 		{
 			asp_.setAborted(result_p_);
 		}
+		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
 	}
 };
 

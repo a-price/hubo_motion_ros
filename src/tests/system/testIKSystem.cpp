@@ -14,21 +14,21 @@
 #include <hubo.h>
 #include "HuboKin.h"
 
-typedef Eigen::Matrix<double, 6, 1> Vector6d;
+typedef Eigen::Matrix<float, 6, 1> Vector6f;
 
 typedef struct
 {
-	double x, y, z, error;
+	float x, y, z, error;
 } reachability_t;
 
-double compareT(Eigen::Isometry3d& a, Eigen::Isometry3d& b,
-		Eigen::VectorXd weight)
+float compareT(Eigen::Isometry3f& a, Eigen::Isometry3f& b,
+		Eigen::VectorXf weight)
 {
-	Eigen::Quaterniond qa(a.rotation());
-	Eigen::Quaterniond qb(b.rotation());
-	Eigen::Vector3d pa = a.translation();
-	Eigen::Vector3d pb = b.translation();
-	Eigen::VectorXd va(7), vb(7), verr(7), vScaled(7);
+	Eigen::Quaternionf qa(a.rotation());
+	Eigen::Quaternionf qb(b.rotation());
+	Eigen::Vector3f pa = a.translation();
+	Eigen::Vector3f pb = b.translation();
+	Eigen::VectorXf va(7), vb(7), verr(7), vScaled(7);
 	va << pa, qa.x(), qa.y(), qa.z(), qa.w();
 	vb << pb, qb.x(), qb.y(), qb.z(), qb.w();
 	verr = vb - va;
@@ -37,33 +37,33 @@ double compareT(Eigen::Isometry3d& a, Eigen::Isometry3d& b,
 }
 
 // TODO: consider orientations other than identity
-std::vector<reachability_t> TestReachability(double rotation)
+std::vector<reachability_t> TestReachability(float rotation)
 {
-	const double XMIN = -0.1, XMAX = 0.7, YMIN = -0.8, YMAX = .2, ZMIN = -1, ZMAX =
+	const float XMIN = -0.1, XMAX = 0.7, YMIN = -0.8, YMAX = .2, ZMIN = -1, ZMAX =
 			0.3, STEPSIZE = 0.05;
 	HK::HuboKin hubo;
 	std::vector<reachability_t> results;
 
-	Eigen::VectorXd weight(7);
+	Eigen::VectorXf weight(7);
 	weight << 1, 1, 1, 1, 1, 1, 1; //change this for weights!
-	Vector6d q;
+	Vector6f q;
 	int count = 0, valid = 0;
-	for (double x = XMIN; x <= XMAX; x += STEPSIZE)
+	for (float x = XMIN; x <= XMAX; x += STEPSIZE)
 	{
-		for (double y = YMIN; y <= YMAX; y += STEPSIZE)
+		for (float y = YMIN; y <= YMAX; y += STEPSIZE)
 		{
-			for (double z = ZMIN; z <= ZMAX; z += STEPSIZE)
+			for (float z = ZMIN; z <= ZMAX; z += STEPSIZE)
 			{
 				++count;
-				Eigen::Isometry3d target = Eigen::Isometry3d::Identity();
-				Eigen::Isometry3d result;
+				Eigen::Isometry3f target = Eigen::Isometry3f::Identity();
+				Eigen::Isometry3f result;
 				target.translation().x() = x;
 				target.translation().y() = y;
 				target.translation().z() = z;
-				target.rotate(Eigen::AngleAxisd(-(M_PI/6) * rotation, Eigen::Vector3d::UnitX()));
-				hubo.armIK(q, target, Vector6d::Zero(), RIGHT);
+				target.rotate(Eigen::AngleAxisf(-(M_PI/6) * rotation, Eigen::Vector3f::UnitX()));
+				hubo.armIK(q, target, Vector6f::Zero(), RIGHT);
 				hubo.armFK(result, q, RIGHT);
-				double ret = compareT(target, result, weight);
+				float ret = compareT(target, result, weight);
 
 
 				//std::cout << ret << "\t";
@@ -103,13 +103,13 @@ int main(int argc, char* argv[])
 	resultPublisher = nh.advertise<visualization_msgs::MarkerArray>( "grasp_points", 0 );
 
 	ros::Rate rate(1);
-	double count;
+	float count;
 	while (ros::ok())
 	{
 		std::vector<reachability_t> results = TestReachability(count);
 		visualization_msgs::MarkerArray mArray;
 
-		double maxError=0;
+		float maxError=0;
 
 		for (int j = 0; j < results.size(); j++)
 		{

@@ -96,7 +96,7 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	poseA0.position.y = -0.45;
 	poseA0.position.z = -0.25;
 
-	Eigen::Quaterniond q; q.setFromTwoVectors(Eigen::Vector3d::UnitX(), -Eigen::Vector3d::UnitZ());
+	Eigen::Quaternionf q; q.setFromTwoVectors(Eigen::Vector3f::UnitX(), -Eigen::Vector3f::UnitZ());
 	poseA0.orientation.w = q.w();
 	poseA0.orientation.x = q.x();
 	poseA0.orientation.y = q.y();
@@ -127,7 +127,7 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	poseA2.position.y = -0.45;
 	poseA2.position.z = 0.25;
 
-	q.setFromTwoVectors(Eigen::Vector3d::UnitX(), Eigen::Vector3d::UnitZ());
+	q.setFromTwoVectors(Eigen::Vector3f::UnitX(), Eigen::Vector3f::UnitZ());
 	poseA2.orientation.w = q.w();
 	poseA2.orientation.x = q.x();
 	poseA2.orientation.y = q.y();
@@ -146,10 +146,10 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 
 
 	// Hand states
-	goal.ClosedStateAtBeginning.push_back(true);
+	goal.ClosedStateAtBeginning.push_back(false);
 	goal.ClosedStateAtBeginning.push_back(false);
 	goal.ClosedStateAtEnd.push_back(false);
-	goal.ClosedStateAtEnd.push_back(true);
+	goal.ClosedStateAtEnd.push_back(false);
 
 
 	return goal;
@@ -229,7 +229,7 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 {
 	// create the action client
 		// true causes the client to spin its own thread
-		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("hw_trajectory_server_pose", true);
+		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_pose", true);
 
 		ROS_INFO("Waiting for action server to start.");
 		// wait for the action server to start

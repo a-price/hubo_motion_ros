@@ -1,0 +1,9 @@
+<launch>
+	<group ns="hardware">
+		<include file="$(find hubo_motion_ros)/launch/hubo_state.launch"/>
+	</group>
+	
+	<group ns="motion">
+		<node name="hubo_trajectory_server" pkg="hubo_motion_ros" type="hubo_trajectory_server"/>
+	</group>
+</launch>
