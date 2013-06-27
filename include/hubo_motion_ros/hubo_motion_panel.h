@@ -45,7 +45,9 @@
 #include <manip.h>
 #include <liberty.h>
 
+#include <sensor_msgs/Joy.h>
 
+#include <Eigen/Geometry>
 
 
 namespace hubo_motion_ros
@@ -53,12 +55,10 @@ namespace hubo_motion_ros
 
 class HuboMotionPanel;
 
-class LibertyRelay : public QThread
+class ManipRelay : public QThread
 {
 Q_OBJECT
 public:
-
-    ach_channel_t libertyChan;
     ach_channel_t manipCmdChan;
     ach_channel_t manipStateChan;
     bool alive;
@@ -67,9 +67,6 @@ public:
     double waistAngle;
 
     hubo_manip_cmd_t cmd;
-
-protected:
-    virtual void run();
 
 public Q_SLOTS:
     void haltOperation();
@@ -85,8 +82,50 @@ public Q_SLOTS:
 
 signals:
     void refreshData(double data, int i, int j);
+
+};
+
+class LibertyRelay : public ManipRelay
+{
+Q_OBJECT
+public:
+
+    ach_channel_t libertyChan;
+    void openLiberty();
+
+protected:
+    virtual void run();
+
+
+signals:
     void libertyQuitting();
 
+};
+
+class SpacenavRelay : public ManipRelay
+{
+Q_OBJECT
+public:
+    void spacenav_callback(const sensor_msgs::JoyConstPtr joystick);
+    ros::NodeHandle nh;
+    Eigen::Vector3d pos[2];
+    Eigen::Vector3d angles[2];
+
+    bool rotationOn;
+    bool rotRegistered;
+
+    bool zOn;
+    bool zRegistered;
+
+    double sn_freq;
+
+    QTime refClock;
+
+protected:
+    virtual void run();
+
+signals:
+    void spacenavQuitting();
 };
 
 class HuboMotionPanel : public rviz::Panel
@@ -97,13 +136,16 @@ public:
     ~HuboMotionPanel();
 
     LibertyRelay libertyThread;
+    SpacenavRelay spacenavThread;
 
     virtual void load( const rviz::Config& config );
     virtual void save( rviz::Config config ) const;
 
+
 private:
     AchNetworkWidget* achManager;
     QCheckBox* libertyCheck;
+    QCheckBox* spacenavCheck;
     QDoubleSpinBox* libertyFreq;
     QVector< QVector<QLineEdit*> > datas;
     QPushButton* graspLB;
@@ -118,12 +160,15 @@ private:
 
 signals:
     void stopLiberty();
+    void stopSpacenav();
 
 protected Q_SLOTS:
 
-    void handleCheckToggle(bool active);
+    void handleLibCheckToggle(bool active);
+    void handleNavCheckToggle(bool active);
     void getRefreshData(double data, int i, int j);
     void handleLibQuit();
+    void handleNavQuit();
 
 };
 
