@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 		tf::StampedTransform tTorsoObject;
 		try
 		{
-			listener.lookupTransform("/Body_Torso", "/final_gcp", ros::Time(0), tTorsoObject);
+			listener.lookupTransform("/Body_Hip", "/final_gcp", ros::Time(0), tTorsoObject);
 			ROS_INFO("Got transform!");
 			geometry_msgs::Pose gcpPose;
 			tf::poseTFToMsg(tf::Transform(tTorsoObject), gcpPose);
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 			hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
 			geometry_msgs::PoseArray pArray;
 
-			pArray.header.frame_id = "/Body_Torso";
+			pArray.header.frame_id = "/Body_Hip";
 			pArray.poses.push_back(safePose);
 			pArray.poses.push_back(gcpPose);
 			goal.PoseTargets.push_back(pArray);

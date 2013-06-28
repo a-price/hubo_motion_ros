@@ -51,7 +51,7 @@
 
 #include <HuboKin.h>
 
-#include "hubo_motion_ros/hubo_joint_names.h"
+#include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
@@ -136,7 +136,7 @@ public:
 			HK::Vector6f q;
 			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
 			{
-				unsigned pos = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
+				unsigned pos = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
 				q[pos] = goal->JointTargets.points[point].positions[joint];
 			}
 			kinematics.armFK(poses[point],q, LEFT);
@@ -202,8 +202,8 @@ public:
 			for (int jointIter = 0; jointIter < goal->JointTargets[armIter].joint_names.size(); jointIter++)
 			{
 				// Get joint index for joint name
-				mapIter = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets[armIter].joint_names[jointIter]);
-				if (mapIter == HUBO_JOINT_NAME_TO_LIMB_POSITION.end())
+				mapIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets[armIter].joint_names[jointIter]);
+				if (mapIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
 				{
 					ROS_ERROR("Joint name '%s' is unknown.", goal->JointTargets[armIter].joint_names[jointIter].c_str());
 					continue;
@@ -386,7 +386,7 @@ public:
 
 			// Publish the target hand positions for debugging purposes
 			currentPoses.header.stamp = ros::Time::now();
-			currentPoses.header.frame_id = "/Body_Torso";
+			currentPoses.header.frame_id = "/Body_Hip";
 			finalHandPub.publish(currentPoses);
 
 

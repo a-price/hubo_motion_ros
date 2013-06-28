@@ -35,7 +35,7 @@ public:
 	void publishState()
 	{
 		sensor_msgs::Imu iState = m_HuboState.getIMUState(true);
-		iState.header.frame_id = "/Body_Torso";
+		iState.header.frame_id = "/Body_Hip";
 		m_ImuPublisher.publish(iState);
 
 		sensor_msgs::JointState jState = m_HuboState.getJointState(false);
@@ -56,11 +56,11 @@ public:
 			if (hand == LEFT) {handName = "left";}
 			else {handName = "right";}
 
-			for (int finger = 0; finger < sizeof(HUBO_URDF_FINGER_NAMES)/sizeof(std::string); finger++)
+			for (int finger = 0; finger < sizeof(DRCHUBO_URDF_FINGER_NAMES)/sizeof(std::string); finger++)
 			{
-				for (int joint = 2; joint <= sizeof(HUBO_URDF_FINGER_LINK_NAMES)/sizeof(std::string); joint++)
+				for (int joint = 2; joint <= sizeof(DRCHUBO_URDF_FINGER_LINK_NAMES)/sizeof(std::string); joint++)
 				{
-					jointName = handName + HUBO_URDF_FINGER_NAMES[finger] + "Knuckle" + std::to_string(joint);
+					jointName = handName + DRCHUBO_URDF_FINGER_NAMES[finger] + "Knuckle" + std::to_string(joint);
 					jState.name.push_back(jointName);
 					jState.position.push_back(0);
 					jState.velocity.push_back(0);

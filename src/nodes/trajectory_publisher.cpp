@@ -92,7 +92,7 @@ public:
 			}
 			else
 			{
-				jt.joint_names.push_back(HUBO_URDF_JOINT_NAMES[joint]);
+				jt.joint_names.push_back(DRCHUBO_URDF_JOINT_NAMES[joint]);
 			}
 		}
 
