@@ -87,8 +87,8 @@ public:
 		tf::transformEigenToTF(psA.cast<double>(), tfA);
 		tf::transformEigenToTF(psB.cast<double>(), tfB);
 
-		m_TFBroad.sendTransform(tf::StampedTransform(tfA, ros::Time::now(), "/Body_HNP", "/camera_link"));
-		m_TFBroad.sendTransform(tf::StampedTransform(tfB, ros::Time::now(), "/Body_HNP", "/camera_link1"));
+		m_TFBroad.sendTransform(tf::StampedTransform(tfA, ros::Time::now(), "/Body_NKP", "/camera_link"));
+		m_TFBroad.sendTransform(tf::StampedTransform(tfB, ros::Time::now(), "/Body_NKP", "/camera_link1"));
 	}
 
 protected:
