@@ -9,6 +9,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 #include <hubo.h>
 
@@ -73,6 +74,18 @@ const std::map<std::string, unsigned> DRCHUBO_JOINT_NAME_TO_LIMB_POSITION = {
 };
 
 /**
+ * \var DRCHUBO_JOINT_NAME_TO_LIMB_
+ * \brief Maps std::strings for each of Hubo's joints to their limb according to <hubo.h>
+ * NB: Requires C++11 to compile
+ */
+const std::map<std::string, unsigned> DRCHUBO_JOINT_NAME_TO_LIMB = {
+	{"LSP",LEFT},{"LSR",LEFT},{"LSY",LEFT},{"LEB",LEFT},{"LWY",LEFT},{"LWR",LEFT},{"LWP",LEFT},
+	{"RSP",RIGHT},{"RSR",RIGHT},{"RSY",RIGHT},{"REB",RIGHT},{"RWY",RIGHT},{"RWR",RIGHT},{"RWP",RIGHT},
+	{"LHY",LEFT+2},{"LHR",LEFT+2},{"LHP",LEFT+2},{"LKN",LEFT+2},{"LAP",LEFT+2},{"LAR",LEFT+2},
+	{"RHY",RIGHT+2},{"RHR",RIGHT+2},{"RHP",RIGHT+2},{"RKN",RIGHT+2},{"RAP",RIGHT+2},{"RAR",RIGHT+2}
+};
+
+/**
  * \var DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION
  * \brief Maps indices for each of Hubo's joints to their place in the limb's chain according to <hubo.h>
  * NB: Requires C++11 to compile
@@ -103,5 +116,14 @@ const std::string DRCHUBO_URDF_FINGER_NAMES[] =
 const std::string DRCHUBO_URDF_FINGER_LINK_NAMES[] =
 {
 	"Proximal","Medial","Distal"
+};
+
+/**
+ * \var DRCHUBO_ARM_INDEX_TO_NAMES
+ * \brief Lists the joint names for each arm
+ */
+const std::map<unsigned, std::vector<std::string> > DRCHUBO_ARM_INDEX_TO_NAMES = {
+	{LEFT, {"LSP","LSR","LSY","LEP","LWY","LWR","LWP"}},
+	{RIGHT, {"RSP","RSR","RSY","REP","RWY","RWR","RWP"}}
 };
 #endif //DRCHUBO_JOINT_NAMES_H

@@ -69,7 +69,7 @@ tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 }
 
 template <typename Derived>
-geometry_msgs::Pose toPose(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
+geometry_msgs::Pose toPose(const Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 {
 	geometry_msgs::Pose result;
 	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
