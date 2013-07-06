@@ -127,6 +127,7 @@ public:
 		result_j_.Success = false;
 		ros::Time tOut;
 		hubo_manip_cmd_t cmd;
+		memset(&cmd, 0, sizeof(cmd));
 
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;

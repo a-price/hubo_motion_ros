@@ -67,8 +67,8 @@ const std::map<std::string, int> DRCHUBO_JOINT_NAME_TO_INDEX = {
  * NB: Requires C++11 to compile
  */
 const std::map<std::string, unsigned> DRCHUBO_JOINT_NAME_TO_LIMB_POSITION = {
-	{"LSP",0},{"LSR",1},{"LSY",2},{"LEB",3},{"LWY",4},{"LWR",5},{"LWP",6},
-	{"RSP",0},{"RSR",1},{"RSY",2},{"REB",3},{"RWY",4},{"RWR",5},{"RWP",6},
+	{"LSP",0},{"LSR",1},{"LSY",2},{"LEB",3},{"LWY",4},{"LWP",5},{"LWR",6},
+	{"RSP",0},{"RSR",1},{"RSY",2},{"REB",3},{"RWY",4},{"RWP",5},{"RWR",6},
 	{"LHY",0},{"LHR",1},{"LHP",2},{"LKN",3},{"LAP",4},{"LAR",5},
 	{"RHY",0},{"RHR",1},{"RHP",2},{"RKN",3},{"RAP",4},{"RAR",5}
 };
