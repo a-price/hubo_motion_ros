@@ -1,6 +1,6 @@
 /**
  *
- * \file hubo_manip_traj_forwarder.cpp
+ * \file hubo_trajectory_server.cpp
  * \brief Subscribes to ROS topics containing manipulation goal information, forwards that information over ach, and reports on the progress.
  *
  * \author Andrew Price
@@ -125,6 +125,7 @@ public:
 		bool preempted = false, error = false, completed = false;
 		bool staleWarning = true, errorWarning = true;
 		result_j_.Success = false;
+		ros::Time tOut;
 		hubo_manip_cmd_t cmd;
 
 		// Set global properties
@@ -132,7 +133,7 @@ public:
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		cmd.waistAngle = 0.0;
 		goalCount++;
-
+		std::cerr << "Joint Count: " << goal->JointTargets.points.size() << std::endl;
 #ifdef JOINTS_NOT_IMPLEMENTED
 
 		// Set command properties for each arm
@@ -144,9 +145,12 @@ public:
 			cmd.interrupt[armIdx] = true;
 		}
 
-		// Send an "MC_ANGLES" command for each
+		// Send an "MC_ANGLES" command for each timestep
 		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
 		{
+			// Reset error flags
+			preempted = false; error = false; completed = false;
+
 			// Set the goal count for all arms
 			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
 			{
@@ -176,6 +180,9 @@ public:
 				cmd.arm_angles[arm][pos] = goal->JointTargets.points[point].positions[joint];
 			}
 
+			// Set the wait period
+			tOut = ros::Time::now() + ros::Duration(10,0);
+
 			// Send the command
 			cmdChannel.pushState(cmd);
 
@@ -196,10 +203,17 @@ public:
 				{
 					ROS_WARN("New Goal available.");
 				}
+				// Check for timeout
+				if (tOut < ros::Time::now())
+				{
+					ROS_WARN("Goal Timed out.");
+					error = true;
+					break;
+				}
 
 				// read the state channel
 				completed = true;
-				state = stateChannel.waitState(50);
+				state = stateChannel.waitState(50, false);
 				for (int arm = 0; arm < NUM_ARMS; arm++)
 				{
 					feedback_j_.CommandState = state.mode_state[arm];
