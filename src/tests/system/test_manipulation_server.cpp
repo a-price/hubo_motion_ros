@@ -1,6 +1,6 @@
 /**
  *
- * \file test_manipulation_forwarder.cpp
+ * \file test_manipulation_server.cpp
  * \brief Subsystem test for verifying operation of the manipulation and control daemons
  *
  * \author Andrew Price
@@ -39,6 +39,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <manip.h>
+
 #include <ros/ros.h>
 
 #include <actionlib/client/simple_action_client.h>
@@ -47,6 +49,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include "hubo_motion_ros/AchROSBridge.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 
@@ -188,7 +191,6 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 		traj.points.push_back(point);
 	}
 
-	//goal.ArmIndex.push_back(0);
 	goal.JointTargets = traj;
 
 	return goal;
@@ -198,7 +200,7 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 {
 	// create the action client
 	// true causes the client to spin its own thread
-	actionlib::SimpleActionClient<hubo_motion_ros::ExecuteJointTrajectoryAction> ac("manip_traj_forwarder_joint", true);
+	actionlib::SimpleActionClient<hubo_motion_ros::ExecuteJointTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_joint", true);
 
 	ROS_INFO("Waiting for action server to start.");
 	// wait for the action server to start
@@ -208,6 +210,26 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 
 	// send a goal to the action
 	ac.sendGoal(goal);
+
+	// Check Ach data here
+	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
+	hubo_manip_cmd_t cmdActual;
+	bool allCorrect = true;
+
+	cmdActual = cmdChannel.waitState(250);
+	for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+	{
+		allCorrect &= cmdActual.m_mode[armIdx] == manip_mode_t::MC_ANGLES;
+		allCorrect &= cmdActual.m_ctrl[armIdx] == manip_ctrl_t::MC_NONE;
+		allCorrect &= cmdActual.m_grasp[armIdx] == manip_grasp_t::MC_GRASP_LIMP;
+		allCorrect &= cmdActual.interrupt[armIdx] == true;
+	}
+
+	if (allCorrect)
+	{
+		ROS_INFO("Everything's Right!");
+	}
+
 
 	//wait for the action to return
 	bool finished_before_timeout = ac.waitForResult(ros::Duration(30.0));
@@ -240,6 +262,8 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 		// send a goal to the action
 		ac.sendGoal(goal);
 
+		// TODO: Check Ach data here
+
 		//wait for the action to return
 		bool finished_before_timeout = ac.waitForResult(ros::Duration(15.0));
 
@@ -258,15 +282,16 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "test_manipulation_forwarder");
-	ROS_INFO("Started test_manipulation_forwarder.");
+	ros::init(argc, argv, "test_manipulation_server");
+	ROS_INFO("Started test_manipulation_server.");
 	ros::NodeHandle nh;
 	ros::Publisher m_posePublisher = nh.advertise<geometry_msgs::PoseArray>("/hubo/pose_targets", 1);
 
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal = createTrajectoryPoseGoal();
 	m_posePublisher.publish(goal.PoseTargets[0]);
-	testPoseClient(goal);
-	//testJointClient(createCurlGoal());
+
+	//testPoseClient(goal);
+	testJointClient(createCurlGoal());
 
 	//ros::spin();
 

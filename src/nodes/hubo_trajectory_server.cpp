@@ -122,57 +122,136 @@ public:
 
 	void executeJointCB(const hubo_motion_ros::ExecuteJointTrajectoryGoalConstPtr &goal)
 	{
-#ifdef JOINTS_NOT_IMPLEMENTED
-		HK::HuboKin kinematics;
-		std::vector<Eigen::Isometry3f> poses(goal->JointTargets.points.size());
-		ros::Time tStart = ros::Time::now();
-		ros::Duration sleepTime;
-
-		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac(
-					"hubo_trajectory_server_pose", true);
-
-		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
-		{
-			HK::Vector6f q;
-			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
-			{
-				unsigned pos = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
-				q[pos] = goal->JointTargets.points[point].positions[joint];
-			}
-			kinematics.armFK(poses[point],q, LEFT);
-			ROS_INFO_STREAM("Sending pose: \n" << poses[point].matrix());
-			geometry_msgs::Pose poseMsg = toPose(poses[point]);
-			ExecutePoseTrajectoryGoal newGoal;
-
-			geometry_msgs::PoseArray pArray;
-			pArray.poses.push_back(poseMsg);
-			newGoal.PoseTargets.push_back(pArray);
-			newGoal.ArmIndex.push_back(LEFT);
-			newGoal.ClosedStateAtBeginning.push_back(false);
-			newGoal.ClosedStateAtEnd.push_back(false);
-
-
-			if (tStart + goal->JointTargets.points[point].time_from_start > ros::Time::now())
-			{
-				sleepTime = (tStart + goal->JointTargets.points[point].time_from_start - ros::Time::now());
-				sleepTime.sleep();
-			}
-
-			ac.sendGoal(newGoal);
-
-		}
-		result_j_.Success = true;
-		asj_.setSucceeded(result_j_);
-#else
 		bool preempted = false, error = false, completed = false;
+		bool staleWarning = true, errorWarning = true;
 		result_j_.Success = false;
 		hubo_manip_cmd_t cmd;
-		hubo_manip_traj_t traj;
 
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+		cmd.waistAngle = 0.0;
 		goalCount++;
+
+#ifdef JOINTS_NOT_IMPLEMENTED
+
+		// Set command properties for each arm
+		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			cmd.m_mode[armIdx] = manip_mode_t::MC_ANGLES;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_LIMP;
+			cmd.interrupt[armIdx] = true;
+		}
+
+		// Send an "MC_ANGLES" command for each
+		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
+		{
+			// Set the goal count for all arms
+			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+			{
+				cmd.goalID[armIdx] = goalCount;
+			}
+
+			// Assign all joint targets to their positions in the command structure arrays.
+			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
+			{
+				std::string jointName = goal->JointTargets.joint_names[joint];
+				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
+				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
+
+				if (limbIter == DRCHUBO_JOINT_NAME_TO_LIMB.end())
+				{
+					ROS_ERROR_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
+					continue;
+				}
+				if (posIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
+				{
+					ROS_ERROR_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
+					continue;
+				}
+
+				unsigned arm = limbIter->second;
+				unsigned pos = posIter->second;
+				cmd.arm_angles[arm][pos] = goal->JointTargets.points[point].positions[joint];
+			}
+
+			// Send the command
+			cmdChannel.pushState(cmd);
+
+			// Wait for completion, failure, or timeout, while checking for feedback or preemption
+			hubo_manip_state_t state;
+			while (!preempted && !completed && !error && ros::ok())
+			{
+				// check that preempt has not been requested by the client
+				if (asp_.isPreemptRequested())
+				{
+					ROS_WARN("%s: Preempted", action_name_j_.c_str());
+					// set the action state to preempted
+					asp_.setPreempted();
+					preempted = true;
+					return;
+				}
+				else if (asp_.isNewGoalAvailable())
+				{
+					ROS_WARN("New Goal available.");
+				}
+
+				// read the state channel
+				completed = true;
+				state = stateChannel.waitState(50);
+				for (int arm = 0; arm < NUM_ARMS; arm++)
+				{
+					feedback_j_.CommandState = state.mode_state[arm];
+					feedback_j_.GraspState = state.grasp_state[arm];
+					feedback_j_.ErrorState = state.error[arm];
+
+					// Data is from an old command
+					if (state.goalID[arm] != goalCount)
+					{
+						completed = false;
+						error = false;
+						if (staleWarning)
+						{
+							ROS_WARN("Got old cmd ID: %i, arm: %i", state.goalID[arm], arm);
+							staleWarning = false;
+						}
+						continue;
+					}
+
+					completed = completed &&
+							((state.mode_state[arm] == manip_mode_t::MC_READY) ||
+							(state.mode_state[arm] == manip_mode_t::MC_HALT));
+					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
+
+					if (error && errorWarning)
+					{
+						ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
+						errorWarning = false;
+					}
+
+					if (completed)
+					{
+						ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
+					}
+				}
+
+				// publish the feedback
+				asj_.publishFeedback(feedback_j_);
+			}
+
+			// Increment the goal counter
+			goalCount++;
+			staleWarning = true;
+			errorWarning = true;
+
+		}
+
+		result_j_.Success = (completed && !error && !preempted) ? 1 : 0;
+		asj_.setSucceeded(result_j_);
+#else
+
+		hubo_manip_traj_t traj;
 
 		// Iterate through all arms provided
 		for (int armIter = 0; armIter < std::min(goal->ArmIndex.size(),(size_t)NUM_ARMS); armIter++)
