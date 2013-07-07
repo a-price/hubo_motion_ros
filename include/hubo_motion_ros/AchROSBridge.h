@@ -116,6 +116,9 @@ public:
 	/// Cancels any put or get commands to the channel.
 	virtual ach_status_t cancelRequest();
 
+	/// Flushes current channel (i.e. moves pointer to head)
+	virtual ach_status_t flush();
+
 protected:
 //	ach_channel_t mAchChan;
 //	std::string mAchChanName;
@@ -141,9 +144,13 @@ AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 
 	if (ACH_ENOENT == r)
 	{
+		// Attempt to create the channel, but warn the user
 		r = ach_create(mAchChannel.mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
 		ROS_WARN("Creating new Ach channel '%s'. The recommended procedure is to create any necessary channels before running the program.",
 			mAchChannel.mAchChanName.c_str());
+
+		// Try to open the channel again
+		r = ach_open( &mAchChannel.mAchChan, mAchChannel.mAchChanName.c_str(), NULL );
 	}
 
 	if( ACH_OK != r )
@@ -282,6 +289,15 @@ ach_status_t AchROSBridge<DataClass>::cancelRequest()
 {
 	ach_status_t r = ACH_OK;
 	r = mAchChannel.cancelRequest();
+
+	return r;
+}
+
+template <class DataClass>
+ach_status_t AchROSBridge<DataClass>::flush()
+{
+	ach_status_t r = ACH_OK;
+	r = ach_flush(&mAchChannel.mAchChan);
 
 	return r;
 }

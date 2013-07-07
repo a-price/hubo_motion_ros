@@ -49,9 +49,20 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
+
+#define ROS_EXPECT_EQ(expected, actual) \
+	do { \
+	  if (!((expected) == (actual))) { \
+		ROS_FATAL("ASSERTION FAILED\n\tfile = %s\n\tline = %d\n\tcond = %s == %s\n\tmessage = ", __FILE__, __LINE__, #expected, #actual); \
+		ROS_FATAL_STREAM("Expected: " << std::to_string(expected) << ". Actual: " << std::to_string(actual) << "."); \
+		ROS_FATAL("\n"); \
+		ROS_ISSUE_BREAK(); \
+	  } \
+	} while (0)
 
 hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
 {
@@ -169,6 +180,7 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 	traj.joint_names.push_back("LEB");
 	traj.joint_names.push_back("LWY");
 	traj.joint_names.push_back("LWP");
+	traj.joint_names.push_back("LWR");
 
 	for (int i = 0; i < 200; i++)
 	{
@@ -213,21 +225,55 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 
 	// Check Ach data here
 	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
+	hubo_motion_ros::AchROSBridge<hubo_manip_state> stateChannel(CHAN_HUBO_MANIP_STATE);
 	hubo_manip_cmd_t cmdActual;
-	bool allCorrect = true;
+	hubo_manip_state_t stateSimulated;
+	memset(&stateSimulated, 0, sizeof(stateSimulated));
 
-	cmdActual = cmdChannel.waitState(250);
-	for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+	// Read the command from the channel
+	for (int i = 0; i < 10; i++)
 	{
-		allCorrect &= cmdActual.m_mode[armIdx] == manip_mode_t::MC_ANGLES;
-		allCorrect &= cmdActual.m_ctrl[armIdx] == manip_ctrl_t::MC_NONE;
-		allCorrect &= cmdActual.m_grasp[armIdx] == manip_grasp_t::MC_GRASP_LIMP;
-		allCorrect &= cmdActual.interrupt[armIdx] == true;
-	}
+		cmdActual = cmdChannel.waitState(250);
+		int32_t step = cmdActual.goalID[0] - 1;
+		ROS_ASSERT(step >= 0);
+		// Verify command parameters
+		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			ROS_EXPECT_EQ(manip_mode_t::MC_ANGLES, cmdActual.m_mode[armIdx]);
+			ROS_EXPECT_EQ(manip_ctrl_t::MC_NONE, cmdActual.m_ctrl[armIdx]);
+			ROS_EXPECT_EQ(manip_grasp_t::MC_GRASP_LIMP, cmdActual.m_grasp[armIdx]);
+			ROS_EXPECT_EQ(true, cmdActual.interrupt[armIdx]);
+		}
 
-	if (allCorrect)
-	{
-		ROS_INFO("Everything's Right!");
+		// Verify joint settings
+		if (!goal.UseHardTrajectory)
+		{
+			for (size_t joint = 0; joint < goal.JointTargets.joint_names.size(); joint++)
+			{
+				std::string jointName = goal.JointTargets.joint_names[joint];
+				unsigned arm = DRCHUBO_JOINT_NAME_TO_LIMB.at(jointName);
+				unsigned pos = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(jointName);
+				if (cmdActual.arm_angles[arm][pos] != 0.0)
+					ROS_INFO_STREAM(jointName << " : " << cmdActual.arm_angles[arm][pos]);
+				ROS_EXPECT_EQ(goal.JointTargets.points[step].positions[joint], cmdActual.arm_angles[arm][pos]);
+			}
+		}
+		else
+		{
+
+		}
+
+		// Send feedback state
+		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			stateSimulated.goalID[armIdx] = cmdActual.goalID[armIdx];
+			stateSimulated.error[armIdx] = manip_error_t::MC_NO_ERROR;
+			stateSimulated.mode_state[armIdx] = manip_mode_t::MC_READY;
+		}
+
+		stateChannel.pushState(stateSimulated);
+
+		// TODO:Verify correct feedback
 	}
 
 

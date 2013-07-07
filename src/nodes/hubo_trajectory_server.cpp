@@ -111,6 +111,8 @@ public:
 		asp_.start();
 		asj_.start();
 		goalCount = 1;
+		cmdChannel.flush();
+		stateChannel.flush();
 		ROS_INFO("Constructed Server.");
 
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
@@ -133,7 +135,7 @@ public:
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		cmd.waistAngle = 0.0;
-		goalCount++;
+		goalCount = 1; // Is it better to restart or increment?
 		std::cerr << "Joint Count: " << goal->JointTargets.points.size() << std::endl;
 #ifdef JOINTS_NOT_IMPLEMENTED
 
@@ -155,6 +157,7 @@ public:
 			// Set the goal count for all arms
 			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
 			{
+				std::cerr << "Goal ID: " << goalCount << std::endl;
 				cmd.goalID[armIdx] = goalCount;
 			}
 
