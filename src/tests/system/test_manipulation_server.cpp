@@ -177,7 +177,7 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 	traj.joint_names.push_back("LSP");
 	traj.joint_names.push_back("LSR");
 	traj.joint_names.push_back("LSY");
-	traj.joint_names.push_back("LEB");
+	traj.joint_names.push_back("LEP");
 	traj.joint_names.push_back("LWY");
 	traj.joint_names.push_back("LWP");
 	traj.joint_names.push_back("LWR");

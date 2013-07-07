@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(hubo_motion_ros)
 set(BUILD_FLAGS "-std=c++0x -Wreturn-type -Wno-enum-compare")
 
+# Add additional CMake files
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS roscpp
  message_generation genmsg actionlib actionlib_msgs
@@ -17,9 +20,15 @@ find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
 include(${QT_USE_FILE})
 link_libraries(${QT_LIBRARIES})
 
+# Include Eigen for matrices
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIRS})
 add_definitions(${EIGEN_DEFINITIONS})
+
+# Include CppUnit
+find_package(CppUnit)
+include_directories(${CPPUNIT_INCLUDE_DIR})
+link_libraries(${CPPUNIT_LIBRARIES})
 
 #######################################
 ## Declare ROS messages and services ##
@@ -113,6 +122,19 @@ add_library(${PROJECT_NAME}_rviz SHARED ${plugins_source} ${include_source} ${MO
 set_target_properties(${PROJECT_NAME}_rviz PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
 ## Allow Testing
 enable_testing()
+
+# Build unit tests
+message(STATUS "\n-- UNIT TESTS: ")
+foreach(utest_src_file ${unit_tests_source})
+	get_filename_component(test_base ${utest_src_file} NAME_WE)
+	message(STATUS "Adding test ${test_base}" )
+	add_executable(${test_base} "src/tests/test_units.cpp" ${utest_src_file})
+	add_test(${test_base} ${EXECUTABLE_OUTPUT_PATH}/${test_base})
+	#catkin_add_gtest(${test_base} src/tests/unit/TestParameterizedObject.cpp)
+	target_link_libraries(${test_base} ${PROJECT_NAME})
+	set_target_properties(${test_base} PROPERTIES COMPILE_FLAGS ${BUILD_FLAGS})
+	add_dependencies(tests ${test_base})
+endforeach(utest_src_file)
 
 # Build executables
 message(STATUS "\n-- ROS NODES: ")
