@@ -187,7 +187,7 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 		trajectory_msgs::JointTrajectoryPoint point;
 		for (size_t j = 0; j < traj.joint_names.size(); j++)
 		{
-			if (traj.joint_names[j] == "LEB")
+            if (traj.joint_names[j] == "LEP")
 			{
 				point.positions.push_back(i/2.0 * M_PI/180);
 				point.velocities.push_back(0);
