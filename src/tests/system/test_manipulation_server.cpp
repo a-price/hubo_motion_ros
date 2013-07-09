@@ -64,11 +64,37 @@
 	  } \
 	} while (0)
 
-bool spoofDaemon = true;
+using namespace hubo_motion_ros;
 
-hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
+bool spoofDaemon = true;
+volatile bool receivedResult = false;
+
+// Called once when the goal completes
+void jointDoneCB(const actionlib::SimpleClientGoalState& state,
+				 const ExecuteJointTrajectoryResultConstPtr& result)
 {
-	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+	ROS_INFO("Finished in state [%s]", state.toString().c_str());
+	receivedResult = true;
+}
+
+// Called once when the goal becomes active
+void activeCB()
+{
+	ROS_INFO("Goal just went active");
+}
+
+// Called every time feedback is received for the goal
+void jointFeedbackCB(const ExecuteJointTrajectoryFeedbackConstPtr& feedback)
+{
+	ROS_INFO_STREAM("Got Feedback " <<
+					"Command: " << (int)feedback->CommandState << ", "<<
+					"Error: " << (int)feedback->ErrorState << ", "<<
+					"Grasp: " << (int)feedback->GraspState);
+}
+
+ExecutePoseTrajectoryGoal createSimplePoseGoal()
+{
+	ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArrayL, pArrayR;
 	geometry_msgs::Pose pose;
 
@@ -98,9 +124,9 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
 	return goal;
 }
 
-hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
+ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 {
-	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+	ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArrayL, pArrayR;
 	geometry_msgs::Pose poseA0,poseA1,poseA2,poseB0,poseB1,poseB2;
 
@@ -172,9 +198,9 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 }
 
 
-hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
+ExecuteJointTrajectoryGoal createCurlGoal()
 {
-	hubo_motion_ros::ExecuteJointTrajectoryGoal goal;
+	ExecuteJointTrajectoryGoal goal;
 	trajectory_msgs::JointTrajectory traj;
 	traj.joint_names.push_back("RSP");
 	traj.joint_names.push_back("RSR");
@@ -223,7 +249,7 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 	ROS_INFO("Action server started, sending goal.");
 
 	// send a goal to the action
-	ac.sendGoal(goal);
+	ac.sendGoal(goal, &jointDoneCB, &activeCB, &jointFeedbackCB);
 
 	// Check Ach data here
 	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
@@ -233,9 +259,9 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 	memset(&stateSimulated, 0, sizeof(stateSimulated));
 
 	// Read the command from the channel
-	for (int i = 0; i < 10; i++)
+	while(!receivedResult && ros::ok())
 	{
-		cmdActual = cmdChannel.waitState(250);
+		cmdActual = cmdChannel.waitState(1000);
 		int32_t step = cmdActual.goalID[0] - 1;
 		ROS_ASSERT(step >= 0);
 
