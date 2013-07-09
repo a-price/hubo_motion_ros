@@ -165,6 +165,7 @@ public:
 			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
 			{
 				std::string jointName = goal->JointTargets.joint_names[joint];
+				std::cerr << jointName << std::endl;
 				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
 				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
 
