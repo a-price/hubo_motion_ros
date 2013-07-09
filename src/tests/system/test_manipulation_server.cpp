@@ -64,6 +64,8 @@
 	  } \
 	} while (0)
 
+bool spoofDaemon = true;
+
 hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
 {
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
@@ -174,20 +176,20 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 {
 	hubo_motion_ros::ExecuteJointTrajectoryGoal goal;
 	trajectory_msgs::JointTrajectory traj;
-	traj.joint_names.push_back("LSP");
-	traj.joint_names.push_back("LSR");
-	traj.joint_names.push_back("LSY");
-	traj.joint_names.push_back("LEP");
-	traj.joint_names.push_back("LWY");
-	traj.joint_names.push_back("LWP");
-	traj.joint_names.push_back("LWR");
+	traj.joint_names.push_back("RSP");
+	traj.joint_names.push_back("RSR");
+	traj.joint_names.push_back("RSY");
+	traj.joint_names.push_back("REP");
+	traj.joint_names.push_back("RWY");
+	traj.joint_names.push_back("RWP");
+	traj.joint_names.push_back("RWR");
 
 	for (int i = 0; i < 200; i++)
 	{
 		trajectory_msgs::JointTrajectoryPoint point;
 		for (size_t j = 0; j < traj.joint_names.size(); j++)
 		{
-            if (traj.joint_names[j] == "LEP")
+			if (traj.joint_names[j] == "REP")
 			{
 				point.positions.push_back(i/2.0 * M_PI/180);
 				point.velocities.push_back(0);
@@ -236,6 +238,9 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 		cmdActual = cmdChannel.waitState(250);
 		int32_t step = cmdActual.goalID[0] - 1;
 		ROS_ASSERT(step >= 0);
+
+		ROS_INFO_STREAM("\n" << cmdActual);
+
 		// Verify command parameters
 		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
 		{
@@ -263,15 +268,18 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 
 		}
 
-		// Send feedback state
-		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		if (spoofDaemon)
 		{
-			stateSimulated.goalID[armIdx] = cmdActual.goalID[armIdx];
-			stateSimulated.error[armIdx] = manip_error_t::MC_NO_ERROR;
-			stateSimulated.mode_state[armIdx] = manip_mode_t::MC_READY;
-		}
+			// Send feedback state
+			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+			{
+				stateSimulated.goalID[armIdx] = cmdActual.goalID[armIdx];
+				stateSimulated.error[armIdx] = manip_error_t::MC_NO_ERROR;
+				stateSimulated.mode_state[armIdx] = manip_mode_t::MC_READY;
+			}
 
-		stateChannel.pushState(stateSimulated);
+			stateChannel.pushState(stateSimulated);
+		}
 
 		// TODO:Verify correct feedback
 	}
@@ -331,6 +339,9 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "test_manipulation_server");
 	ROS_INFO("Started test_manipulation_server.");
 	ros::NodeHandle nh;
+
+	nh.param<bool>("spoof_daemon", spoofDaemon, true);
+
 	ros::Publisher m_posePublisher = nh.advertise<geometry_msgs::PoseArray>("/hubo/pose_targets", 1);
 
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal = createTrajectoryPoseGoal();
