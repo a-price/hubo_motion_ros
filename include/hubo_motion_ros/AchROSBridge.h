@@ -108,7 +108,7 @@ public:
 	virtual ach_status_t updateState();
 
 	/// Waits for new data from the ach channel
-	virtual const DataClass&  waitState(const uint32_t millis, const bool showWarnings = true);
+	virtual const DataClass&  waitState(const uint32_t millis, ach_status_t *result = NULL, const bool showWarnings = true);
 
 	/// Returns the data with an option to update first
 	virtual const DataClass& getState(bool update = true);
@@ -223,7 +223,7 @@ ach_status_t AchROSBridge<DataClass>::updateState()
 }
 
 template <class DataClass>
-const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis, const bool showWarnings)
+const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis, ach_status_t* result, const bool showWarnings)
 {
 	ROS_DEBUG("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
 	ach_status_t r = ACH_OK;
@@ -269,6 +269,12 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis, const
 		ROS_DEBUG("New ach data on channel '%s'.",
 			mAchChannel.mAchChanName.c_str());
 	}
+
+	if (result)
+	{
+		*result = r;
+	}
+
 	return mAchData;
 }
 

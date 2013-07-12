@@ -44,7 +44,7 @@
 
 #include "hubo_motion_ros/AchMonitor.h"
 
-
+/*
 std::ostream& operator<<(std::ostream& os, const hubo_manip_state& obj)
 {
 	for (size_t arm = 0; arm < NUM_ARMS; arm++)
@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const hubo_manip_cmd& obj)
 		//os << "Error: " << obj.pose[arm] << "\n";
 	}
 	return os;
-}
+}*/
 
 int main(int argc, char** argv)
 {

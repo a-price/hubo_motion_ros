@@ -135,7 +135,7 @@ public:
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		cmd.waistAngle = 0.0;
-		goalCount = 1; // Is it better to restart or increment?
+		goalCount++; // Is it better to restart or increment?
 		std::cerr << "Joint Count: " << goal->JointTargets.points.size() << std::endl;
 #ifdef JOINTS_NOT_IMPLEMENTED
 
@@ -165,7 +165,7 @@ public:
 			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
 			{
 				std::string jointName = goal->JointTargets.joint_names[joint];
-				std::cerr << jointName << std::endl;
+				std::cerr << jointName;
 				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
 				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
 
@@ -186,9 +186,10 @@ public:
 			}
 
 			// Set the wait period
-			tOut = ros::Time::now() + ros::Duration(10,0);
+			tOut = ros::Time::now() + ros::Duration(5.0);
 
 			// Send the command
+			std::cerr << "Sending Command:\n" << cmd << std::endl;
 			cmdChannel.pushState(cmd);
 
 			// Wait for completion, failure, or timeout, while checking for feedback or preemption
@@ -208,6 +209,7 @@ public:
 				{
 					ROS_WARN("New Goal available.");
 				}
+
 				// Check for timeout
 				if (tOut < ros::Time::now())
 				{
@@ -217,8 +219,16 @@ public:
 				}
 
 				// read the state channel
+				ach_status_t achResult;
 				completed = true;
-				state = stateChannel.waitState(50, false);
+				state = stateChannel.waitState(50, &achResult, false);
+
+				if (ACH_OK != achResult)
+				{
+					completed = false;
+					continue;
+				}
+
 				for (int arm = 0; arm < NUM_ARMS; arm++)
 				{
 					feedback_j_.CommandState = state.mode_state[arm];
@@ -241,7 +251,7 @@ public:
 					completed = completed &&
 							((state.mode_state[arm] == manip_mode_t::MC_READY) ||
 							(state.mode_state[arm] == manip_mode_t::MC_HALT));
-					error = state.error[arm] != manip_error_t::MC_NO_ERROR;
+					error = error || state.error[arm] != manip_error_t::MC_NO_ERROR;
 
 					if (error && errorWarning)
 					{
@@ -266,8 +276,17 @@ public:
 
 		}
 
-		result_j_.Success = (completed && !error && !preempted) ? 1 : 0;
-		asj_.setSucceeded(result_j_);
+		std::cerr << "error: " << error << std::endl;
+		bool success = (completed && !error && !preempted);
+		result_j_.Success = (uint8_t)success;// ? 1 : 0;
+		if (success)
+		{
+			asj_.setSucceeded(result_j_);
+		}
+		else
+		{
+			asj_.setAborted(result_j_);
+		}
 #else
 
 		hubo_manip_traj_t traj;

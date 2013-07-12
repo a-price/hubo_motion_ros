@@ -86,10 +86,13 @@ void activeCB()
 // Called every time feedback is received for the goal
 void jointFeedbackCB(const ExecuteJointTrajectoryFeedbackConstPtr& feedback)
 {
+	if (!feedback->ErrorState == manip_error_t::MC_NO_ERROR && spoofDaemon)
+	{
 	ROS_INFO_STREAM("Got Feedback " <<
 					"Command: " << (int)feedback->CommandState << ", "<<
 					"Error: " << (int)feedback->ErrorState << ", "<<
 					"Grasp: " << (int)feedback->GraspState);
+	}
 }
 
 ExecutePoseTrajectoryGoal createSimplePoseGoal()
@@ -197,6 +200,22 @@ ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	return goal;
 }
 
+ExecuteJointTrajectoryGoal createAngleGoal()
+{
+	ExecuteJointTrajectoryGoal goal;
+	trajectory_msgs::JointTrajectory traj;
+	trajectory_msgs::JointTrajectoryPoint point;
+
+	traj.joint_names.push_back("REP");
+
+	point.positions.push_back(100.0 * M_PI/180.0);
+	traj.points.push_back(point);
+
+	goal.JointTargets = traj;
+
+	return goal;
+}
+
 
 ExecuteJointTrajectoryGoal createCurlGoal()
 {
@@ -217,7 +236,7 @@ ExecuteJointTrajectoryGoal createCurlGoal()
 		{
 			if (traj.joint_names[j] == "REP")
 			{
-				point.positions.push_back(i/2.0 * M_PI/180);
+				point.positions.push_back(i/2.0 * M_PI/180.0);
 				point.velocities.push_back(0);
 				point.accelerations.push_back(0);
 			}
@@ -251,6 +270,8 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 	// send a goal to the action
 	ac.sendGoal(goal, &jointDoneCB, &activeCB, &jointFeedbackCB);
 
+	if (spoofDaemon)
+	{
 	// Check Ach data here
 	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
 	hubo_motion_ros::AchROSBridge<hubo_manip_state> stateChannel(CHAN_HUBO_MANIP_STATE);
@@ -308,6 +329,7 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 		}
 
 		// TODO:Verify correct feedback
+	}
 	}
 
 
@@ -374,7 +396,7 @@ int main(int argc, char** argv)
 	m_posePublisher.publish(goal.PoseTargets[0]);
 
 	//testPoseClient(goal);
-	testJointClient(createCurlGoal());
+	testJointClient(createAngleGoal());
 
 	//ros::spin();
 
