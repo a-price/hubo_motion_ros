@@ -208,7 +208,7 @@ ExecuteJointTrajectoryGoal createAngleGoal()
 
 	traj.joint_names.push_back("REP");
 
-	point.positions.push_back(100.0 * M_PI/180.0);
+	point.positions.push_back(-60.0 * M_PI/180.0);
 	traj.points.push_back(point);
 
 	goal.JointTargets = traj;
@@ -236,7 +236,7 @@ ExecuteJointTrajectoryGoal createCurlGoal()
 		{
 			if (traj.joint_names[j] == "REP")
 			{
-				point.positions.push_back(i/2.0 * M_PI/180.0);
+				point.positions.push_back(-i/2.0 * M_PI/180.0);
 				point.velocities.push_back(0);
 				point.accelerations.push_back(0);
 			}

@@ -223,10 +223,23 @@ public:
 				completed = true;
 				state = stateChannel.waitState(50, &achResult, false);
 
-				if (ACH_OK != achResult)
+				if (ACH_OK != achResult && ACH_MISSED_FRAME != achResult)
 				{
 					completed = false;
+					ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+						CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
 					continue;
+				}
+				else if (ACH_TIMEOUT == achResult)
+				{
+					completed = false;
+					ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+						CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
+					continue;
+				}
+				else
+				{
+					std::cerr << "Got good state:\n" << state << std::endl;
 				}
 
 				for (int arm = 0; arm < NUM_ARMS; arm++)
