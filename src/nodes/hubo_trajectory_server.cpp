@@ -51,6 +51,10 @@
 
 #include <HuboKin.h>
 
+#include <hubo_robot_msgs/JointTrajectoryAction.h>
+#include <hubo_robot_msgs/PoseTrajectoryAction.h>
+#include <hubo_robot_msgs/HybridTrajectoryAction.h>
+
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
@@ -76,7 +80,7 @@ protected:
 	ros::NodeHandle nh_;
 	// NodeHandle instance must be created before this line. Otherwise strange error may occur.
 	actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
-	actionlib::SimpleActionServer<hubo_motion_ros::ExecuteJointTrajectoryAction> asj_;
+	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
 	std::string action_name_j_;
 	std::string action_name_p_;
 
@@ -86,8 +90,8 @@ protected:
 	hubo_motion_ros::ExecutePoseTrajectoryFeedback feedback_p_;
 	hubo_motion_ros::ExecutePoseTrajectoryResult result_p_;
 
-	hubo_motion_ros::ExecuteJointTrajectoryFeedback feedback_j_;
-	hubo_motion_ros::ExecuteJointTrajectoryResult result_j_;
+	hubo_robot_msgs::JointTrajectoryFeedback feedback_j_;
+	hubo_robot_msgs::JointTrajectoryResult result_j_;
 
 	AchROSBridge<hubo_manip_state> stateChannel;
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
@@ -122,11 +126,11 @@ public:
 	{
 	}
 
-	void executeJointCB(const hubo_motion_ros::ExecuteJointTrajectoryGoalConstPtr &goal)
+	void executeJointCB(const hubo_robot_msgs::JointTrajectoryGoalConstPtr &goal)
 	{
 		bool preempted = false, error = false, completed = false;
 		bool staleWarning = true, errorWarning = true;
-		result_j_.Success = false;
+		///////////result_j_.Success = false;
 		ros::Time tOut;
 		hubo_manip_cmd_t cmd;
 		memset(&cmd, 0, sizeof(cmd));
@@ -136,7 +140,7 @@ public:
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		cmd.waistAngle = 0.0;
 		goalCount++; // Is it better to restart or increment?
-		std::cerr << "Joint Count: " << goal->JointTargets.points.size() << std::endl;
+		std::cerr << "Joint Count: " << goal->trajectory.points.size() << std::endl;
 #ifdef JOINTS_NOT_IMPLEMENTED
 
 		// Set command properties for each arm
@@ -149,7 +153,7 @@ public:
 		}
 
 		// Send an "MC_ANGLES" command for each timestep
-		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
+		for (size_t point = 0; point < goal->trajectory.points.size(); point++)
 		{
 			// Reset error flags
 			preempted = false; error = false; completed = false;
@@ -162,9 +166,9 @@ public:
 			}
 
 			// Assign all joint targets to their positions in the command structure arrays.
-			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
+			for (size_t joint = 0; joint < goal->trajectory.joint_names.size(); joint++)
 			{
-				std::string jointName = goal->JointTargets.joint_names[joint];
+				std::string jointName = goal->trajectory.joint_names[joint];
 				std::cerr << jointName;
 				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
 				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
@@ -182,7 +186,7 @@ public:
 
 				unsigned arm = limbIter->second;
 				unsigned pos = posIter->second;
-				cmd.arm_angles[arm][pos] = goal->JointTargets.points[point].positions[joint];
+				cmd.arm_angles[arm][pos] = goal->trajectory.points[point].positions[joint];
 			}
 
 			// Set the wait period
@@ -244,9 +248,9 @@ public:
 
 				for (int arm = 0; arm < NUM_ARMS; arm++)
 				{
-					feedback_j_.CommandState = state.mode_state[arm];
-					feedback_j_.GraspState = state.grasp_state[arm];
-					feedback_j_.ErrorState = state.error[arm];
+					///////////feedback_j_.CommandState = state.mode_state[arm];
+					///////////feedback_j_.GraspState = state.grasp_state[arm];
+					///////////feedback_j_.ErrorState = state.error[arm];
 
 					// Data is from an old command
 					if (state.goalID[arm] != goalCount)
@@ -291,7 +295,7 @@ public:
 
 		std::cerr << "error: " << error << std::endl;
 		bool success = (completed && !error && !preempted);
-		result_j_.Success = (uint8_t)success;// ? 1 : 0;
+		///////////result_j_.Success = (uint8_t)success;// ? 1 : 0;
 		if (success)
 		{
 			asj_.setSucceeded(result_j_);
@@ -329,24 +333,24 @@ public:
 
 			std::map<std::string, int>::const_iterator mapIter;
 			// Iterate through all joints in each step
-			for (int jointIter = 0; jointIter < goal->JointTargets[armIter].joint_names.size(); jointIter++)
+			for (int jointIter = 0; jointIter < goal->trajectory[armIter].joint_names.size(); jointIter++)
 			{
 				// Get joint index for joint name
-				mapIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets[armIter].joint_names[jointIter]);
+				mapIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->trajectory[armIter].joint_names[jointIter]);
 				if (mapIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
 				{
-					ROS_ERROR("Joint name '%s' is unknown.", goal->JointTargets[armIter].joint_names[jointIter].c_str());
+					ROS_ERROR("Joint name '%s' is unknown.", goal->trajectory[armIter].joint_names[jointIter].c_str());
 					continue;
 				}
 				size_t jointIdx = mapIter->second;
 
 				// Iterate through all timesteps
-				for (int timeStep = 0; timeStep < std::min(goal->JointTargets[armIter].points.size(), (size_t)MAX_TRAJ_SIZE); timeStep++)
+				for (int timeStep = 0; timeStep < std::min(goal->trajectory[armIter].points.size(), (size_t)MAX_TRAJ_SIZE); timeStep++)
 				{
 					// Assign all step parameters
-					traj.arm_angles[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].positions[jointIter];
-					traj.arm_speeds[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].velocities[jointIter];
-					traj.arm_accels[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].accelerations[jointIter];
+					traj.arm_angles[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].positions[jointIter];
+					traj.arm_speeds[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].velocities[jointIter];
+					traj.arm_accels[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].accelerations[jointIter];
 				}
 			}
 		}
@@ -435,7 +439,7 @@ public:
 		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
-		result_p_.Success = false;
+		///////////result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
 
 		ros::Time tOut;
@@ -558,9 +562,9 @@ public:
 					{
 						continue;
 					}
-					feedback_p_.CommandState = state.mode_state[arm];
-					feedback_p_.GraspState = state.grasp_state[arm];
-					feedback_p_.ErrorState = state.error[arm];
+					///////////feedback_p_.CommandState = state.mode_state[arm];
+					///////////feedback_p_.GraspState = state.grasp_state[arm];
+					///////////feedback_p_.ErrorState = state.error[arm];
 
 					// Data is from an old command
 					if (state.goalID[arm] != goalCount)
@@ -606,7 +610,7 @@ public:
 		{
 			ROS_INFO("Completed Goal.");
 		}
-		result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
+		///////////result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
 		if (result_p_.Success)
 		{
 			asp_.setSucceeded(result_p_);

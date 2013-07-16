@@ -49,6 +49,10 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include <hubo_robot_msgs/JointTrajectoryAction.h>
+#include <hubo_robot_msgs/PoseTrajectoryAction.h>
+#include <hubo_robot_msgs/HybridTrajectoryAction.h>
+
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
@@ -71,7 +75,7 @@ volatile bool receivedResult = false;
 
 // Called once when the goal completes
 void jointDoneCB(const actionlib::SimpleClientGoalState& state,
-				 const ExecuteJointTrajectoryResultConstPtr& result)
+				 const hubo_robot_msgs::JointTrajectoryResultConstPtr& result)
 {
 	ROS_INFO("Finished in state [%s]", state.toString().c_str());
 	receivedResult = true;
@@ -84,15 +88,15 @@ void activeCB()
 }
 
 // Called every time feedback is received for the goal
-void jointFeedbackCB(const ExecuteJointTrajectoryFeedbackConstPtr& feedback)
+void jointFeedbackCB(const hubo_robot_msgs::JointTrajectoryFeedbackConstPtr& feedback)
 {
-	if (!feedback->ErrorState == manip_error_t::MC_NO_ERROR && spoofDaemon)
-	{
-	ROS_INFO_STREAM("Got Feedback " <<
-					"Command: " << (int)feedback->CommandState << ", "<<
-					"Error: " << (int)feedback->ErrorState << ", "<<
-					"Grasp: " << (int)feedback->GraspState);
-	}
+//	if (!feedback->ErrorState == manip_error_t::MC_NO_ERROR && spoofDaemon)
+//	{
+//	ROS_INFO_STREAM("Got Feedback " <<
+//					"Command: " << (int)feedback->CommandState << ", "<<
+//					"Error: " << (int)feedback->ErrorState << ", "<<
+//					"Grasp: " << (int)feedback->GraspState);
+//	}
 }
 
 ExecutePoseTrajectoryGoal createSimplePoseGoal()
@@ -200,9 +204,9 @@ ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	return goal;
 }
 
-ExecuteJointTrajectoryGoal createAngleGoal()
+hubo_robot_msgs::JointTrajectoryGoal createAngleGoal()
 {
-	ExecuteJointTrajectoryGoal goal;
+	hubo_robot_msgs::JointTrajectoryGoal goal;
 	trajectory_msgs::JointTrajectory traj;
 	trajectory_msgs::JointTrajectoryPoint point;
 
@@ -211,15 +215,15 @@ ExecuteJointTrajectoryGoal createAngleGoal()
 	point.positions.push_back(-60.0 * M_PI/180.0);
 	traj.points.push_back(point);
 
-	goal.JointTargets = traj;
+	goal.trajectory = traj;
 
 	return goal;
 }
 
 
-ExecuteJointTrajectoryGoal createCurlGoal()
+hubo_robot_msgs::JointTrajectoryGoal createCurlGoal()
 {
-	ExecuteJointTrajectoryGoal goal;
+	hubo_robot_msgs::JointTrajectoryGoal goal;
 	trajectory_msgs::JointTrajectory traj;
 	traj.joint_names.push_back("RSP");
 	traj.joint_names.push_back("RSR");
@@ -250,16 +254,16 @@ ExecuteJointTrajectoryGoal createCurlGoal()
 		traj.points.push_back(point);
 	}
 
-	goal.JointTargets = traj;
+	goal.trajectory = traj;
 
 	return goal;
 }
 
-bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
+bool testJointClient(hubo_robot_msgs::JointTrajectoryGoal goal)
 {
 	// create the action client
 	// true causes the client to spin its own thread
-	actionlib::SimpleActionClient<hubo_motion_ros::ExecuteJointTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_joint", true);
+	actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_joint", true);
 
 	ROS_INFO("Waiting for action server to start.");
 	// wait for the action server to start
@@ -298,16 +302,16 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 		}
 
 		// Verify joint settings
-		if (!goal.UseHardTrajectory)
+		if (goal.trajectory.points[0].time_from_start == ros::Duration(0))
 		{
-			for (size_t joint = 0; joint < goal.JointTargets.joint_names.size(); joint++)
+			for (size_t joint = 0; joint < goal.trajectory.joint_names.size(); joint++)
 			{
-				std::string jointName = goal.JointTargets.joint_names[joint];
+				std::string jointName = goal.trajectory.joint_names[joint];
 				unsigned arm = DRCHUBO_JOINT_NAME_TO_LIMB.at(jointName);
 				unsigned pos = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(jointName);
 				if (cmdActual.arm_angles[arm][pos] != 0.0)
 					ROS_INFO_STREAM(jointName << " : " << cmdActual.arm_angles[arm][pos]);
-				ROS_EXPECT_EQ(goal.JointTargets.points[step].positions[joint], cmdActual.arm_angles[arm][pos]);
+				ROS_EXPECT_EQ(goal.trajectory.points[step].positions[joint], cmdActual.arm_angles[arm][pos]);
 			}
 		}
 		else
