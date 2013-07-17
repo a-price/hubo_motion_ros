@@ -233,14 +233,15 @@ hubo_robot_msgs::JointTrajectoryGoal createCurlGoal()
 	traj.joint_names.push_back("RWP");
 	traj.joint_names.push_back("RWR");
 
-	for (int i = 0; i < 200; i++)
+	int numSteps = 50;
+	for (int i = 0; i < numSteps; i++)
 	{
 		trajectory_msgs::JointTrajectoryPoint point;
 		for (size_t j = 0; j < traj.joint_names.size(); j++)
 		{
 			if (traj.joint_names[j] == "REP")
 			{
-				point.positions.push_back(-i/2.0 * M_PI/180.0);
+				point.positions.push_back(-(double)i/((double)numSteps) * M_PI * 1.0/2.0);
 				point.velocities.push_back(0);
 				point.accelerations.push_back(0);
 			}
@@ -400,7 +401,8 @@ int main(int argc, char** argv)
 	m_posePublisher.publish(goal.PoseTargets[0]);
 
 	//testPoseClient(goal);
-	testJointClient(createAngleGoal());
+	//testJointClient(createAngleGoal());
+	testJointClient(createCurlGoal());
 
 	//ros::spin();
 

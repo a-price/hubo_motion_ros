@@ -21,7 +21,7 @@
  */
 const std::string DRCHUBO_JOINT_NAMES[] =
 {
-	"TSY","NKY","NKP","",
+	"TSY","NKY","NK1","NK2",
 	"LSP","LSR","LSY","LEB","LWY","LWR","LWP",
 	"RSP","RSR","RSY","REB","RWY","RWR","RWP","",
 	"LHY","LHR","LHP","LKN","LAP","LAR","",
@@ -37,7 +37,7 @@ const std::string DRCHUBO_JOINT_NAMES[] =
  */
 const std::string DRCHUBO_URDF_JOINT_NAMES[] =
 {
-	"TSY","NKY","NKP","NK2",
+	"TSY","NKY","NK1","NK2",
 	"LSP","LSR","LSY","LEP","LWY","LWR","LWP",
 	"RSP","RSR","RSY","REP","RWY","RWR","RWP","",
 	"LHY","LHR","LHP","LKP","LAP","LAR","",
@@ -52,7 +52,7 @@ const std::string DRCHUBO_URDF_JOINT_NAMES[] =
  * NB: Requires C++11 to compile
  */
 const std::map<std::string, int> DRCHUBO_JOINT_NAME_TO_INDEX = {
-	{"TSY",WST},{"NKY",NKY},{"NKP",NK1},{"NK2",NK2},
+	{"TSY",WST},{"NKY",NKY},{"NK1",NK1},{"NK2",NK2},
 	{"LSP",LSP},{"LSR",LSR},{"LSY",LSY},{"LEP",LEB},{"LWY",LWY},{"LWR",LWR},{"LWP",LWP},
 	{"RSP",RSP},{"RSR",RSR},{"RSY",RSY},{"REP",REB},{"RWY",RWY},{"RWR",RWR},{"RWP",RWP},
 	{"LHY",LHY},{"LHR",LHR},{"LHP",LHP},{"LKP",LKN},{"LAP",LAP},{"LAR",LAR},

@@ -129,7 +129,7 @@ public:
 	void executeJointCB(const hubo_robot_msgs::JointTrajectoryGoalConstPtr &goal)
 	{
 		bool preempted = false, error = false, completed = false;
-		bool staleWarning = true, errorWarning = true;
+		bool staleWarning = true, errorWarning = true, channelWarning = true;
 		///////////result_j_.Success = false;
 		ros::Time tOut;
 		hubo_manip_cmd_t cmd;
@@ -175,22 +175,28 @@ public:
 
 				if (limbIter == DRCHUBO_JOINT_NAME_TO_LIMB.end())
 				{
-					ROS_ERROR_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
+					ROS_WARN_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
 					continue;
 				}
 				if (posIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
 				{
-					ROS_ERROR_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
+					ROS_WARN_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
 					continue;
 				}
 
 				unsigned arm = limbIter->second;
 				unsigned pos = posIter->second;
+
+				if (arm != LEFT && arm != RIGHT)
+				{
+					ROS_WARN_STREAM("Joint Name " << jointName << " is not an arm joint.");
+					continue;
+				}
 				cmd.arm_angles[arm][pos] = goal->trajectory.points[point].positions[joint];
 			}
 
 			// Set the wait period
-			tOut = ros::Time::now() + ros::Duration(5.0);
+			tOut = ros::Time::now() + ros::Duration(1.0);
 
 			// Send the command
 			std::cerr << "Sending Command:\n" << cmd << std::endl;
@@ -237,13 +243,17 @@ public:
 				else if (ACH_TIMEOUT == achResult)
 				{
 					completed = false;
-					ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
-						CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
+					if (channelWarning)
+					{
+						ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+								  CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
+						channelWarning = false;
+					}
 					continue;
 				}
 				else
 				{
-					std::cerr << "Got good state:\n" << state << std::endl;
+					//std::cerr << "Got good state:\n" << state << std::endl;
 				}
 
 				for (int arm = 0; arm < NUM_ARMS; arm++)
@@ -289,6 +299,7 @@ public:
 			// Increment the goal counter
 			goalCount++;
 			staleWarning = true;
+			channelWarning = true;
 			errorWarning = true;
 
 		}
