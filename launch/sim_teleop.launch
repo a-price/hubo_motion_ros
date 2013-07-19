@@ -1,0 +1,17 @@
+<launch>
+	<param name="/robot_description" textfile="$(find drchubo-v2)/robots/drchubo-v2.urdf" />
+	
+	<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node" />
+	<node name="joystick_integrator" pkg="joystick_integrator" type="joystick_integrator_node" >
+		<remap from="joy_in" to="/spacenav/joy" />
+		<remap from="pose_out" to="joy_pose" />
+	</node>
+	<node name="simple_teleop" pkg="hubo_motion_ros" type="simple_teleop" >
+		<remap from="pose_in" to="joy_pose" />
+		<remap from="/joint_states" to="/hubo/joint_states"/>
+	</node>
+	<node name="kinematics_server" pkg="hubo_motion_ros" type="kinematics_server" />
+	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
+		<remap from="/joint_states" to="/hubo/joint_states"/>
+	</node>
+</launch>

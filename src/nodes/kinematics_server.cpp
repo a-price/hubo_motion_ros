@@ -46,19 +46,40 @@
 #include <Eigen/Geometry>
 
 #include <hubo.h>
-#include <HuboKin.h>
 
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/drchubo_joint_names.h"
+#include "hubo_motion_ros/DrcHuboKin.h"
 
-typedef Eigen::Matrix< float, 6, 1 > Vector6f;
-Vector6f q;
-HK::HuboKin kinematics;
+DrcHuboKin* kinematics;
+
+int getMoveitErrorCode(RobotKin::rk_result_t result)
+{
+	switch (result)
+	{
+	case RobotKin::RK_SOLVED:
+	case RobotKin::RK_CONVERGED:
+		return moveit_msgs::MoveItErrorCodes::SUCCESS;
+	case RobotKin::RK_DIVERGED:
+	case RobotKin::RK_NO_SOLUTION:
+		return moveit_msgs::MoveItErrorCodes::NO_IK_SOLUTION;
+	case RobotKin::RK_INVALID_JOINT:
+		return moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME;
+	case RobotKin::RK_INVALID_LINKAGE:
+		return moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
+	case RobotKin::RK_INVALID_FRAME_TYPE:
+		return moveit_msgs::MoveItErrorCodes::FRAME_TRANSFORM_FAILURE;
+	default:
+		return moveit_msgs::MoveItErrorCodes::FAILURE;
+	}
+}
 
 bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPositionIK::Response& response)
 {
 	int arm = 0;
-	Eigen::Isometry3f proposal = hubo_motion_ros::toIsometry(request.ik_request.pose_stamped.pose);
+	Eigen::Isometry3d proposal = hubo_motion_ros::toIsometry(request.ik_request.pose_stamped.pose).cast<double>();
+	DrcHuboKin::ArmVector q = DrcHuboKin::ArmVector::Zero();
+
 	if (request.ik_request.group_name == "left_arm")
 	{
 		arm = LEFT;
@@ -70,23 +91,24 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 	else
 	{
 		ROS_ERROR("Group name '%s' is unknown.", request.ik_request.group_name.c_str());
+		response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
 		return false;
 	}
 
-	kinematics.armIK(q, proposal, HK::Vector6f::Zero(), arm);
+	RobotKin::rk_result_t result = kinematics->armIK(arm, q, proposal);
 
 	sensor_msgs::JointState js;
-	int origin = 0;
+	int baseJoint = 0;
 	if (LEFT == arm)
 	{
-		origin = LSP;
+		baseJoint = LSP;
 	}
 	else if (RIGHT == arm)
 	{
-		origin = RSP;
+		baseJoint = RSP;
 	}
 
-	for (int i = origin; i < origin+7; i++)
+	for (int i = baseJoint; i < baseJoint+7; i++)
 	{
 		if ( i == RWR || i == LWR ) { continue; }
 		js.position.push_back(q[DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION[i]]);
@@ -94,84 +116,52 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 	}
 
 	response.solution.joint_state = js;
-	response.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
+	response.error_code.val = getMoveitErrorCode(result);
 
 	return true;
 }
 
 bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPositionFK::Response& response)
 {
-	Eigen::VectorXf qLeft = Eigen::VectorXf::Ones(6);
-	Eigen::VectorXf qRight = Eigen::VectorXf::Ones(6);
-	Eigen::Isometry3f resultLeft, resultRight;
-	bool computeLeft = false;
-	bool computeRight = false;
+	Eigen::Isometry3d resultFrame;
 
-	// Check which arms we're supposed to compute
+	// Populate the joint states
+	for (int i = 0; i < request.robot_state.joint_state.name.size(); i++)
+	{
+		sensor_msgs::JointState& jointState = request.robot_state.joint_state;
+
+		// Check whether joint is legitimate
+		if (!kinematics->joint(jointState.name[i]).name().compare("invalid"))
+		{
+			kinematics->joint(jointState.name[i]).value(jointState.position[i]);
+		}
+		else
+		{
+			ROS_ERROR("Joint name '%s' is unknown.", jointState.name[i].c_str());
+			response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME;
+			return false;
+		}
+	}
+
 	for (int i = 0; i < request.fk_link_names.size(); i++)
 	{
-		if (request.fk_link_names[i] == "left_arm")
+		if (!kinematics->linkage(request.fk_link_names[i]).name().compare("invalid"))
 		{
-			computeLeft = true;
-		}
-		else if (request.fk_link_names[i] == "right_arm")
-		{
-			computeRight = true;
+			resultFrame = kinematics->linkage(request.fk_link_names[i]).tool().respectToRobot();
+
+			geometry_msgs::PoseStamped pose;
+			pose.pose = hubo_motion_ros::toPose(resultFrame);
+			pose.header.frame_id = "/Body_TSY";
+			pose.header.stamp = ros::Time::now();
+			response.pose_stamped.push_back(pose);
+			response.fk_link_names.push_back(request.fk_link_names[i]);
 		}
 		else
 		{
 			ROS_ERROR("Group name '%s' is unknown.", request.fk_link_names[i].c_str());
+			response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
+			return false;
 		}
-	}
-
-	// Populate structs to send to HuboKin
-	for (int i = 0; i < request.robot_state.joint_state.name.size(); i++)
-	{
-		std::string jointName = request.robot_state.joint_state.name[i];
-		std::map<std::string, unsigned>::const_iterator iter = DRCHUBO_JOINT_NAME_TO_LIMB.find(
-					jointName);
-		if (iter == DRCHUBO_JOINT_NAME_TO_LIMB.end())
-		{
-			ROS_ERROR("Joint name '%s' is unknown.", jointName.c_str());
-			continue;
-		}
-		int limb = iter->second;
-
-		if (LEFT == limb)
-		{
-			computeLeft = true;
-			qLeft[DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(jointName)] = request.robot_state.joint_state.position[i];
-		}
-		else if (RIGHT == limb)
-		{
-			computeRight = true;
-			qRight[DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(jointName)] = request.robot_state.joint_state.position[i];
-		}
-	}
-
-	// Run FK on both limbs and push results
-	if (computeLeft)
-	{
-		kinematics.armFK(resultLeft, qLeft, LEFT);
-
-		geometry_msgs::PoseStamped pose;
-		pose.pose = hubo_motion_ros::toPose(resultLeft);
-		pose.header.frame_id = "/Body_Hip";
-		pose.header.stamp = ros::Time::now();
-		response.pose_stamped.push_back(pose);
-		response.fk_link_names.push_back("left_arm");
-	}
-
-	if (computeRight)
-	{
-		kinematics.armFK(resultRight, qRight, RIGHT);
-
-		geometry_msgs::PoseStamped pose;
-		pose.pose = hubo_motion_ros::toPose(resultRight);
-		pose.header.frame_id = "/Body_Hip";
-		pose.header.stamp = ros::Time::now();
-		response.pose_stamped.push_back(pose);
-		response.fk_link_names.push_back("right_arm");
 	}
 
 	return true;
@@ -183,6 +173,15 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "kinematics_server");
 
 	ros::NodeHandle nh;
+
+	std::string robotDescription;
+	if (!nh.getParam("robot_description", robotDescription))
+	{
+		ROS_ERROR("Could not find robot description.");
+		return -1;
+	}
+
+	kinematics = new DrcHuboKin(robotDescription, true);
 
 	ros::ServiceServer ikServer = nh.advertiseService("/hubo/kinematics/ik_service", ikCallback);
 	ros::ServiceServer fkServer = nh.advertiseService("/hubo/kinematics/fk_service", fkCallback);

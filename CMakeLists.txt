@@ -95,6 +95,7 @@ link_libraries(${catkin_LIBRARIES})
 ## Specify additional locations of header files
 link_libraries(ach)
 link_libraries(rt)
+link_libraries(RobotKin)
 
 # Collect the source, node and test files
 file(GLOB lib_source "src/libraries/*.cpp")
