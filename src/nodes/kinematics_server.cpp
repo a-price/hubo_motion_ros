@@ -110,7 +110,7 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 
 	for (int i = baseJoint; i < baseJoint+7; i++)
 	{
-		if ( i == RWR || i == LWR ) { continue; }
+		//if ( i == RWR || i == LWR ) { continue; }
 		js.position.push_back(q[DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION[i]]);
 		js.name.push_back(DRCHUBO_URDF_JOINT_NAMES[i]);
 	}
@@ -131,13 +131,13 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 		sensor_msgs::JointState& jointState = request.robot_state.joint_state;
 
 		// Check whether joint is legitimate
-		if (!kinematics->joint(jointState.name[i]).name().compare("invalid"))
+		if (kinematics->joint(jointState.name[i]).name() != "invalid")
 		{
 			kinematics->joint(jointState.name[i]).value(jointState.position[i]);
 		}
 		else
 		{
-			ROS_ERROR("Joint name '%s' is unknown.", jointState.name[i].c_str());
+			ROS_ERROR("Joint name '%s' is unknown with new name '%s'.", jointState.name[i].c_str(), kinematics->joint(jointState.name[i]).name().c_str());
 			response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME;
 			return false;
 		}
@@ -145,7 +145,7 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 
 	for (int i = 0; i < request.fk_link_names.size(); i++)
 	{
-		if (!kinematics->linkage(request.fk_link_names[i]).name().compare("invalid"))
+		if (kinematics->linkage(request.fk_link_names[i]).name() != "invalid")
 		{
 			resultFrame = kinematics->linkage(request.fk_link_names[i]).tool().respectToRobot();
 

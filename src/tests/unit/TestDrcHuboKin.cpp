@@ -1,9 +1,9 @@
 /**
- * \file TestJointNames.cpp
- * \brief Verifies operation of ParameterizedObject classes
+ * \file TestDrcHuboKin.cpp
+ * \brief
  *
  * \author Andrew Price
- * \date July 7, 2013
+ * \date July 19, 2013
  *
  * \copyright
  *
@@ -38,62 +38,78 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#include "gtest/gtest.h"
+
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 
+#include <hubo.h>
+
+#include "hubo_motion_ros/DrcHuboKin.h"
 #include "hubo_motion_ros/drchubo_joint_names.h"
 
 //using namespace hubo_motion_ros;
 
-class TestJointNames : public CppUnit::TestFixture
+class TestDrcHuboKin : public CppUnit::TestFixture
 {
-	CPPUNIT_TEST_SUITE( TestJointNames );
-	CPPUNIT_TEST(TestNameGetSet);
+	CPPUNIT_TEST_SUITE( TestDrcHuboKin );
+	CPPUNIT_TEST(TestFKIKFK);
 	CPPUNIT_TEST_SUITE_END();
 public:
 
 	virtual void setUp()
 	{
+		std::string urdf = "/home/arprice/catkin_workspace/src/drchubo/drchubo-v2/robots/drchubo-v2.urdf";
+		kinematics = new DrcHuboKin(urdf, false);
 	}
 
 	virtual void tearDown () {}
 
-	void TestNameGetSet()
+	float randbetween(double min, double max)
 	{
-		for (int i = 0; i < HUBO_JOINT_COUNT; i++)
-		{
-			std::string jointName = DRCHUBO_URDF_JOINT_NAMES[i];
-			if (jointName == "")
-			{
-				continue;
-			}
-			auto jointIter = DRCHUBO_JOINT_NAME_TO_INDEX.find(jointName);
-			CPPUNIT_ASSERT_MESSAGE("Unable to find " + jointName + " in lookup.", DRCHUBO_JOINT_NAME_TO_INDEX.end() != jointIter);
-			int jointIndex = jointIter->second;
-			CPPUNIT_ASSERT_EQUAL(i, jointIndex);
-		}
-
-		for (const auto& arm : DRCHUBO_ARM_INDEX_TO_NAMES)
-		{
-			int side = arm.first;
-			std::vector<std::string> jointNames = arm.second;
-
-			for (std::string jointName : jointNames)
-			{
-				auto jointIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
-				CPPUNIT_ASSERT_MESSAGE("Unable to find " + jointName + " in lookup.", DRCHUBO_JOINT_NAME_TO_LIMB.end() != jointIter);
-				int jointSide = jointIter->second;
-				CPPUNIT_ASSERT_EQUAL(side, jointSide);
-			}
-		}
+		return (max - min) * ( (double)rand() / (double)RAND_MAX ) + min;
 	}
+
+	void TestFKIKFK()
+	{
+		int arm = RIGHT;
+		// Create random legitimate joint values
+		std::vector<RobotKin::Joint*> joints = kinematics->linkage("RightArm").joints();
+		for (int i = 0; i < joints.size(); i++)
+		{
+			double jointVal = randbetween(joints[i]->min(), joints[i]->max());
+			kinematics->joint(joints[i]->name()).value(jointVal);
+		}
+
+		// Do FK to get ee pose
+		Eigen::Isometry3d initialFrame;
+		initialFrame = kinematics->linkage("RightArm").tool().respectToRobot();
+
+		// Do IK to get joints
+		DrcHuboKin::ArmVector q = DrcHuboKin::ArmVector::Zero();
+		RobotKin::rk_result_t result = kinematics->armIK(arm, q, initialFrame);
+
+		std::cerr << "Solver result: " << result << std::endl;
+		CPPUNIT_ASSERT(RobotKin::RK_SOLVED == result);
+
+		// Do FK and verify that it's pretty much the same
+		int baseJoint = 0;
+		if (LEFT == arm)
+		{ baseJoint = LSP; }
+		else if (RIGHT == arm)
+		{ baseJoint = RSP; }
+
+		for (int i = baseJoint; i < baseJoint+7; i++)
+		{
+			kinematics->joint(DRCHUBO_URDF_JOINT_NAMES[i]).value(q[DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION[i]]);
+		}
+
+		Eigen::Isometry3d finalFrame;
+		finalFrame = kinematics->linkage("RightArm").tool().respectToRobot();
+
+		CPPUNIT_ASSERT((initialFrame.matrix() - finalFrame.matrix()).norm() < 0.001);
+	}
+
+	DrcHuboKin* kinematics;
 };
 
-CPPUNIT_TEST_SUITE_REGISTRATION(TestJointNames);
-
-//int main(int argc, char **argv)
-//{
-//	::testing::InitGoogleTest(&argc, argv);
-//	return RUN_ALL_TESTS();
-//}
+CPPUNIT_TEST_SUITE_REGISTRATION(TestDrcHuboKin);

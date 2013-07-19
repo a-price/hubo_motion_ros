@@ -44,7 +44,8 @@
 #include <moveit_msgs/GetPositionFK.h>
 #include <moveit_msgs/GetPositionIK.h>
 
-ros::ServiceClient gKinClient;
+ros::ServiceClient gIKinClient;
+ros::ServiceClient gFKinClient;
 
 geometry_msgs::PoseStamped createSimplePoseGoal()
 {
@@ -52,9 +53,9 @@ geometry_msgs::PoseStamped createSimplePoseGoal()
 
 	poseStamped.header.frame_id = "/Body_TSY";
 
-	poseStamped.pose.position.x = 0.25;
-	poseStamped.pose.position.y = -0.25;
-	poseStamped.pose.position.z = -0.2;
+	poseStamped.pose.position.x = 0.35;
+	poseStamped.pose.position.y = -0.35;
+	poseStamped.pose.position.z = -0.1;
 
 	poseStamped.pose.orientation.w = 1.0;
 	poseStamped.pose.orientation.x = 0.0;
@@ -67,12 +68,28 @@ geometry_msgs::PoseStamped createSimplePoseGoal()
 
 bool testIK(geometry_msgs::PoseStamped poseTarget)
 {
-	moveit_msgs::GetPositionIKRequest req;
-	req.ik_request.group_name = "right_arm";
-	req.ik_request.pose_stamped = poseTarget;
+	moveit_msgs::GetPositionIKRequest iReq;
+	iReq.ik_request.group_name = "right_arm";
+	iReq.ik_request.pose_stamped = poseTarget;
 
-	moveit_msgs::GetPositionIKResponse resp;
-	gKinClient.call(req, resp);
+	moveit_msgs::GetPositionIKResponse iResp;
+	gIKinClient.call(iReq, iResp);
+	if (iResp.error_code.val != (int)moveit_msgs::MoveItErrorCodes::SUCCESS)
+	{
+		std::cerr << "Error: " << iResp.error_code << std::endl;
+	}
+
+	moveit_msgs::GetPositionFKRequest fReq;
+	fReq.fk_link_names.push_back("RightArm");
+	fReq.robot_state.joint_state = iResp.solution.joint_state;
+
+	moveit_msgs::GetPositionFKResponse fResp;
+	gFKinClient.call(fReq, fResp);
+
+	std::cerr << poseTarget << std::endl;
+	std::cerr << fResp.pose_stamped[0] << std::endl;
+
+	return true;
 }
 
 int main(int argc, char** argv)
@@ -82,9 +99,11 @@ int main(int argc, char** argv)
 
 	ros::NodeHandle nh;
 
-	gKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
+	gIKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
+	gFKinClient = nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
 
 	testIK(createSimplePoseGoal());
 
+	ros::shutdown();
 	return 0;
 }

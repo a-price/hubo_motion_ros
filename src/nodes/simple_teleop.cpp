@@ -46,7 +46,7 @@
 
 
 ros::Subscriber gPoseSubscriber;
-ros::ServiceClient gKinClient;
+ros::ServiceClient gIKinClient;
 ros::Publisher gStatePublisher;
 
 void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
@@ -56,7 +56,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 	req.ik_request.pose_stamped = *poseIn;
 
 	moveit_msgs::GetPositionIKResponse resp;
-	gKinClient.call(req, resp);
+	gIKinClient.call(req, resp);
 
 	gStatePublisher.publish(resp.solution.joint_state);
 }
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
 	ros::NodeHandle m_nh;
 
 	gPoseSubscriber = m_nh.subscribe("pose_in", 1, &poseCallback);
-	gKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
+	gIKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
 	gStatePublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
 
 	ros::spin();
