@@ -44,6 +44,8 @@
 #include <moveit_msgs/GetPositionIK.h>
 #include <trajectory_msgs/JointTrajectory.h>
 
+#include "hubo_motion_ros/drchubo_joint_names.h"
+
 
 ros::Subscriber gPoseSubscriber;
 ros::ServiceClient gIKinClient;
@@ -61,13 +63,31 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 	moveit_msgs::GetPositionIKResponse resp;
 	gIKinClient.call(req, resp);
 
-	resp.solution.joint_state.name.push_back("TSY");
-	resp.solution.joint_state.position.push_back(0.0);
-	resp.solution.joint_state.header.frame_id = "/Body_TSY";
-	resp.solution.joint_state.header.stamp = ros::Time::now();
+	if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+	{
+		// Assign all of the new solution joints while preserving the existing ones
+		for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+		{
+			// Locate the index of the solution joint in the plan state
+			for (int j = 0; j < planState.name.size(); j++)
+			{
+				if (resp.solution.joint_state.name[i] == planState.name[j])
+				{
+					planState.position[j] = resp.solution.joint_state.position[i];
+					if (resp.solution.joint_state.velocity.size() > i)
+						planState.velocity[j] = resp.solution.joint_state.velocity[i];
+					if (resp.solution.joint_state.effort.size() > i)
+						planState.effort[j] = resp.solution.joint_state.effort[i];
+				}
+			}
+		}
 
-	gStatePublisher.publish(resp.solution.joint_state);
-	planState = resp.solution.joint_state;
+		// Time and Frame stamps
+		planState.header.frame_id = "/Body_TSY";
+		planState.header.stamp = ros::Time::now();
+
+		gStatePublisher.publish(planState);
+	}
 }
 
 
@@ -77,6 +97,17 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "simple_teleop");
 
 	ros::NodeHandle m_nh;
+
+	for (int i = 0; i < HUBO_JOINT_COUNT; i++)
+	{
+		if (DRCHUBO_URDF_JOINT_NAMES[i] != "")
+		{
+			planState.name.push_back(DRCHUBO_URDF_JOINT_NAMES[i]);
+			planState.position.push_back(0);
+			planState.velocity.push_back(0);
+			planState.effort.push_back(0);
+		}
+	}
 
 	gPoseSubscriber = m_nh.subscribe("pose_in", 1, &poseCallback);
 	gIKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
