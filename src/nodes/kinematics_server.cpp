@@ -80,6 +80,7 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 	Eigen::Isometry3d proposal = hubo_motion_ros::toIsometry(request.ik_request.pose_stamped.pose).cast<double>();
 	DrcHuboKin::ArmVector q = DrcHuboKin::ArmVector::Zero();
 
+	// Get the arm (group)
 	if (request.ik_request.group_name == "left_arm")
 	{
 		arm = LEFT;
@@ -93,6 +94,19 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 		ROS_ERROR("Group name '%s' is unknown.", request.ik_request.group_name.c_str());
 		response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
 		return false;
+	}
+
+	// Get the seed state
+	sensor_msgs::JointState& seedState = request.ik_request.robot_state.joint_state;
+	for (int i = 0; i < seedState.name.size(); i++)
+	{
+		auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(seedState.name[i]);
+		if (DRCHUBO_JOINT_NAME_TO_LIMB.end() == limbIter) { continue; }
+
+		if (limbIter->second == arm)
+		{
+			q[DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(seedState.name[i])] = seedState.position[i];
+		}
 	}
 
 	RobotKin::rk_result_t result = kinematics->armIK(arm, q, proposal);

@@ -49,16 +49,20 @@ ros::Subscriber gPoseSubscriber;
 ros::ServiceClient gIKinClient;
 ros::Publisher gStatePublisher;
 
+sensor_msgs::JointState planState;
+
 void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 {
 	moveit_msgs::GetPositionIKRequest req;
 	req.ik_request.group_name = "right_arm";
 	req.ik_request.pose_stamped = *poseIn;
+	req.ik_request.robot_state.joint_state = planState;
 
 	moveit_msgs::GetPositionIKResponse resp;
 	gIKinClient.call(req, resp);
 
 	gStatePublisher.publish(resp.solution.joint_state);
+	planState = resp.solution.joint_state;
 }
 
 

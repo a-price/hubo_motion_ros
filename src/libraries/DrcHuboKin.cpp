@@ -71,10 +71,7 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 	linkage("Body_LHY").name("LeftLeg");
 
 	std::cerr << this->joints().size() << " joints loaded." << std::endl;
-	//for (int i = 0; i < this->joints().size(); i++)
-	//{
-	//	std::cerr << this->joints()[i]->name() << std::endl;
-	//}
+
 }
 
 RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Isometry3d B)
