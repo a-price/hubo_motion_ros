@@ -70,6 +70,18 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 	linkage("Body_RHY").name("RightLeg");
 	linkage("Body_LHY").name("LeftLeg");
 
+	armRestValues[RIGHT].resize(DRCHUBO_ARM_JOINT_COUNT);
+	armRestValues[LEFT].resize(DRCHUBO_ARM_JOINT_COUNT);
+
+	armRestValues[RIGHT] << -20*M_PI/180, 0, 0, -30*M_PI/180, 0, 0, 0;
+	armRestValues[LEFT] << 20*M_PI/180, 0, 0, -30*M_PI/180, 0, 0, 0;
+
+	legRestValues[RIGHT].resize(DRCHUBO_LEG_JOINT_COUNT);
+	legRestValues[LEFT].resize(DRCHUBO_LEG_JOINT_COUNT);
+
+	legRestValues[RIGHT] << 0, 0, -10*M_PI/180, 20*M_PI/180, -10*M_PI/180, 0;
+	legRestValues[LEFT] << 0, 0, -10*M_PI/180, 20*M_PI/180, -10*M_PI/180, 0;
+
 	std::cerr << this->joints().size() << " joints loaded." << std::endl;
 
 }
@@ -78,10 +90,14 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 {
 	Eigen::VectorXd xq(q);
 	RobotKin::rk_result_t result;
+
+	std::string armName;
 	if(side==LEFT)
-		result = dampedLeastSquaresIK_linkage("LeftArm", xq, B);
+		armName = "LeftArm";
 	else
-		result = dampedLeastSquaresIK_linkage("RightArm", xq, B);
+		armName = "RightArm";
+
+	result = dampedLeastSquaresIK_linkage(armName, xq, B, armRestValues[side]);
 
 	return result;
 }
@@ -90,10 +106,14 @@ RobotKin::rk_result_t DrcHuboKin::legIK(int side, LegVector &q, const Eigen::Iso
 {
 	Eigen::VectorXd xq(q);
 	RobotKin::rk_result_t result;
+
+	std::string armName;
 	if(side==LEFT)
-		result = dampedLeastSquaresIK_linkage("LeftLeg", xq, B);
+		armName = "LeftLeg";
 	else
-		result = dampedLeastSquaresIK_linkage("RightLeg", xq, B);
+		armName = "RightLeg";
+
+	result = dampedLeastSquaresIK_linkage(armName, xq, B, legRestValues[side]);
 
 	return result;
 }
