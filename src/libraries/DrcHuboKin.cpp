@@ -87,6 +87,11 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 
 	result = dampedLeastSquaresIK_linkage(armName, xq, B);
 
+	for (int i = 0; i < xq.size(); i++)
+	{
+		q[i] = xq[i];
+	}
+
 	return result;
 }
 

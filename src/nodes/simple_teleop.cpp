@@ -61,6 +61,11 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 	moveit_msgs::GetPositionIKResponse resp;
 	gIKinClient.call(req, resp);
 
+	resp.solution.joint_state.name.push_back("TSY");
+	resp.solution.joint_state.position.push_back(0.0);
+	resp.solution.joint_state.header.frame_id = "/Body_TSY";
+	resp.solution.joint_state.header.stamp = ros::Time::now();
+
 	gStatePublisher.publish(resp.solution.joint_state);
 	planState = resp.solution.joint_state;
 }
