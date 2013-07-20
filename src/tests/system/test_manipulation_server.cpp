@@ -70,7 +70,7 @@
 
 using namespace hubo_motion_ros;
 
-bool spoofDaemon = true;
+bool gSpoofDaemon = true;
 volatile bool receivedResult = false;
 
 // Called once when the goal completes
@@ -275,7 +275,7 @@ bool testJointClient(hubo_robot_msgs::JointTrajectoryGoal goal)
 	// send a goal to the action
 	ac.sendGoal(goal, &jointDoneCB, &activeCB, &jointFeedbackCB);
 
-	if (spoofDaemon)
+	if (gSpoofDaemon)
 	{
 	// Check Ach data here
 	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
@@ -320,7 +320,7 @@ bool testJointClient(hubo_robot_msgs::JointTrajectoryGoal goal)
 
 		}
 
-		if (spoofDaemon)
+		if (gSpoofDaemon)
 		{
 			// Send feedback state
 			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
@@ -393,7 +393,7 @@ int main(int argc, char** argv)
 	ROS_INFO("Started test_manipulation_server.");
 	ros::NodeHandle nh;
 
-	nh.param<bool>("spoof_daemon", spoofDaemon, true);
+	nh.param<bool>("spoof_daemon", gSpoofDaemon, true);
 
 	ros::Publisher m_posePublisher = nh.advertise<geometry_msgs::PoseArray>("/hubo/pose_targets", 1);
 
@@ -406,6 +406,7 @@ int main(int argc, char** argv)
 
 	//ros::spin();
 
+	ros::shutdown();
 	return 0;
 }
 
