@@ -80,8 +80,6 @@ public:
 	 */
 	RobotKin::rk_result_t armIK(int side, ArmVector &q, const Eigen::Isometry3d B);
 
-	Eigen::VectorXd armRestValues[2];
-	Eigen::VectorXd legRestValues[2];
 };
 
 #endif // DRCHUBOKIN_H
