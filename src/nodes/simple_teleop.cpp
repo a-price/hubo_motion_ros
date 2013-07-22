@@ -48,6 +48,8 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 
+#include <control_msgs/GripperCommandAction.h>
+
 #include <hubo_robot_msgs/JointTrajectoryAction.h>
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
@@ -59,6 +61,8 @@ ros::Publisher gStatePublisher;
 
 sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
+
+bool gripperStateClosed = true;
 
 void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 {
@@ -117,6 +121,24 @@ void clickCallback(const sensor_msgs::JoyPtr joy)
             bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 
         }
+
+		if (prevJoy.buttons[1] == 0 && joy->buttons[1] != 0)
+		{
+			control_msgs::GripperCommandGoal goal;
+			if (gripperStateClosed)
+			{
+				goal.command.position = -1.0;
+			}
+			else
+			{
+				goal.command.position = 1.0;
+			}
+			actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
+			ac.waitForServer();
+			ac.sendGoal(goal);
+			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+
+		}
     }
 
     prevJoy = *joy;

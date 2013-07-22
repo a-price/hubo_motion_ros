@@ -55,10 +55,12 @@
 #include <hubo_robot_msgs/PoseTrajectoryAction.h>
 #include <hubo_robot_msgs/HybridTrajectoryAction.h>
 
+#include <control_msgs/GripperCommandAction.h>
+
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
-#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
+//#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
 #define JOINTS_NOT_IMPLEMENTED
@@ -81,8 +83,11 @@ protected:
 	// NodeHandle instance must be created before this line. Otherwise strange error may occur.
 	actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
 	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
+	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
+
 	std::string action_name_j_;
 	std::string action_name_p_;
+	std::string action_name_g_;
 
 	ros::Publisher finalHandPub;
 
@@ -92,6 +97,8 @@ protected:
 
 	hubo_robot_msgs::JointTrajectoryFeedback feedback_j_;
 	hubo_robot_msgs::JointTrajectoryResult result_j_;
+
+	control_msgs::GripperCommandResult result_g_;
 
 	AchROSBridge<hubo_manip_state> stateChannel;
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
@@ -105,8 +112,10 @@ public:
 	HuboManipulationAction(std::string name) :
 		asp_(nh_, name + "_pose", boost::bind(&HuboManipulationAction::executePoseCB, this, _1), false),
 		asj_(nh_, name + "_joint", boost::bind(&HuboManipulationAction::executeJointCB, this, _1), false),
+		asg_(nh_, name + "_gripper", boost::bind(&HuboManipulationAction::executeGripperCB, this, _1), false),
 		action_name_j_(name + "_joint"),
 		action_name_p_(name + "_pose"),
+		action_name_g_(name + "_gripper"),
 		cmdChannel(CHAN_HUBO_MANIP_CMD),
 		trajChannel(CHAN_HUBO_MANIP_TRAJ),
 		paramChannel(CHAN_HUBO_MANIP_PARAM),
@@ -114,6 +123,7 @@ public:
 	{
 		asp_.start();
 		asj_.start();
+		asg_.start();
 		goalCount = 1;
 		cmdChannel.flush();
 		stateChannel.flush();
@@ -427,12 +437,15 @@ public:
 	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
 	{
 		hubo_manip_cmd_t cmd;
+		memset(&cmd, 0, sizeof(cmd));
+
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		goalCount++;
 
 		// Set the initial hand state
-		for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		//for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		size_t armIdx = RIGHT;
 		{
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
@@ -452,6 +465,7 @@ public:
 		bool preempted = false, error = false, completed = false;
 		///////////result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
+		memset(&cmd, 0, sizeof(cmd));
 
 		ros::Time tOut;
 
@@ -631,6 +645,41 @@ public:
 			asp_.setAborted(result_p_);
 		}
 		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
+	}
+
+	void executeGripperCB(const control_msgs::GripperCommandGoalConstPtr& goal)
+	{
+		if (fabs(goal->command.position) <= 0.01)
+		{
+			if (fabs(goal->command.max_effort) <= 0.01)
+			{
+				forceSetGrasps(manip_grasp_t::MC_GRASP_LIMP, true);
+				result_g_.position = 0.0;
+				result_g_.effort = 0.0;
+			}
+			else
+			{
+				forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, true);
+				result_g_.position = 0.0;
+				result_g_.effort = 1.0;
+			}
+		}
+		else if (goal->command.position > 0.01)
+		{
+			forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
+			result_g_.position = 1.0;
+			result_g_.effort = 1.0;
+		}
+		else if (goal->command.position < -0.01)
+		{
+			forceSetGrasps(manip_grasp_t::MC_RELEASE_NOW, true);
+			result_g_.position = -1.0;
+			result_g_.effort = 1.0;
+		}
+
+		result_g_.reached_goal = true;
+		result_g_.stalled = false;
+		asg_.setSucceeded(result_g_);
 	}
 };
 
