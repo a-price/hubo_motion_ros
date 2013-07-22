@@ -106,7 +106,7 @@ const unsigned DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION[] = {
  */
 const std::string DRCHUBO_URDF_FINGER_NAMES[] =
 {
-	"Thumb","Index","Pinky"
+	"1","2","3"
 };
 
 /**
@@ -115,7 +115,7 @@ const std::string DRCHUBO_URDF_FINGER_NAMES[] =
  */
 const std::string DRCHUBO_URDF_FINGER_LINK_NAMES[] =
 {
-	"Proximal","Medial","Distal"
+	"1","2","3"
 };
 
 /**
