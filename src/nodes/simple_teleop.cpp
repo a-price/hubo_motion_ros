@@ -47,6 +47,8 @@
 #include "hubo_motion_ros/drchubo_joint_names.h"
 
 
+#include "hubo_motion_ros/PoseConverter.h"
+
 ros::Subscriber gPoseSubscriber;
 ros::ServiceClient gIKinClient;
 ros::Publisher gStatePublisher;
@@ -63,7 +65,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 	moveit_msgs::GetPositionIKResponse resp;
 	gIKinClient.call(req, resp);
 
-	if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+    if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
 	{
 		// Assign all of the new solution joints while preserving the existing ones
 		for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
@@ -108,6 +110,17 @@ int main(int argc, char** argv)
 			planState.effort.push_back(0);
 		}
 	}
+
+    for (int side = 0; side < 2; side++)
+        for (int i = 1; i <= 3; i++)
+            for (int j = 1; j <= 3; j++)
+            {
+                std::string sideStr = (side == 0) ? "R" : "L";
+                planState.name.push_back(sideStr + "F" + std::to_string(i) + std::to_string(j));
+                planState.position.push_back(0);
+                planState.velocity.push_back(0);
+                planState.effort.push_back(0);
+            }
 
 	gPoseSubscriber = m_nh.subscribe("pose_in", 1, &poseCallback);
 	gIKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");

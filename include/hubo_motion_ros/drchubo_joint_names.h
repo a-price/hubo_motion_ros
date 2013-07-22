@@ -38,8 +38,8 @@ const std::string DRCHUBO_JOINT_NAMES[] =
 const std::string DRCHUBO_URDF_JOINT_NAMES[] =
 {
 	"TSY","NKY","NK1","NK2",
-	"LSP","LSR","LSY","LEP","LWY","LWR","LWP",
-	"RSP","RSR","RSY","REP","RWY","RWR","RWP","",
+    "LSP","LSR","LSY","LEP","LWY","LWP","LWR",
+    "RSP","RSR","RSY","REP","RWY","RWP","RWR","",
 	"LHY","LHR","LHP","LKP","LAP","LAR","",
 	"RHY","RHR","RHP","RKP","RAP","RAR",
 	"RF1","RF2","RF3","","",
