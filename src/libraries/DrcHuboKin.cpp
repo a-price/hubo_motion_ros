@@ -70,6 +70,13 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 	linkage("Body_RHY").name("RightLeg");
 	linkage("Body_LHY").name("LeftLeg");
 
+    RobotKin::TRANSFORM toolTf = RobotKin::TRANSFORM::Identity();
+    toolTf.translate(joint("RWR_dummy").respectToFixed().translation());
+    linkage("RightArm").tool().respectToFixed(toolTf);
+    toolTf = RobotKin::TRANSFORM::Identity();
+    toolTf.translate(joint("LWR_dummy").respectToFixed().translation());
+    linkage("LeftArm").tool().respectToFixed(toolTf);
+
 	std::cerr << this->joints().size() << " joints loaded." << std::endl;
 
 }
@@ -78,6 +85,20 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 {
 	Eigen::VectorXd xq(q);
 	RobotKin::rk_result_t result;
+    RobotKin::Constraints constraint;
+    constraint.wrapSolutionToJointLimits = false;
+    constraint.wrapToJointLimits = false;
+    imposeLimits = false;
+    Eigen::VectorXd restValues(7); restValues.setZero();
+    restValues[0] = -30*M_PI/180;
+    restValues[1] = 0;
+    restValues[2] = 0;
+    restValues[3] = -30*M_PI/180;
+    restValues[4] = 0;
+    restValues[5] = 0;
+    restValues[6] = 0;
+
+    constraint.restingValues(restValues);
 
 	std::string armName;
 	if(side==LEFT)
@@ -85,7 +106,8 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 	else
 		armName = "RightArm";
 
-	result = dampedLeastSquaresIK_linkage(armName, xq, B);
+    result = dampedLeastSquaresIK_linkage(armName, xq, B, constraint);
+//    result = dampedLeastSquaresIK_linkage(armName, xq, B);
 
 	for (int i = 0; i < xq.size(); i++)
 	{

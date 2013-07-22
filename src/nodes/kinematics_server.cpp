@@ -76,6 +76,9 @@ int getMoveitErrorCode(RobotKin::rk_result_t result)
 
 bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPositionIK::Response& response)
 {
+    /// Turn off joint limits
+    kinematics->imposeLimits = false;
+
 	int arm = 0;
 	Eigen::Isometry3d proposal = hubo_motion_ros::toIsometry(request.ik_request.pose_stamped.pose).cast<double>();
 	DrcHuboKin::ArmVector q = DrcHuboKin::ArmVector::Zero();
