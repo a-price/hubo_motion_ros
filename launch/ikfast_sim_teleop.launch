@@ -1,0 +1,26 @@
+<launch>
+	<param name="/robot_description" textfile="$(find drchubo-v2)/robots/drchubo-v2.urdf" />
+    <param name="/position_speed" value="0.05" />
+
+
+	<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node" />
+	<node name="joystick_integrator" pkg="joystick_integrator" type="joystick_integrator_node" >
+		<remap from="joy_in" to="/spacenav/joy" />
+		<remap from="pose_out" to="joy_pose" />
+	</node>
+	<node name="simple_teleop" pkg="hubo_motion_ros" type="simple_teleop" output="screen" >
+		<remap from="pose_in" to="joy_pose" />
+		<remap from="joy_in" to="/spacenav/joy" />
+		<remap from="/joint_states" to="/hubo/joint_states"/>
+	</node>
+	<node name="ikfast_kinematics_server" pkg="hubo_motion_ros" type="ikfast_kinematics_server" output="screen" />
+	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
+		<remap from="/joint_states" to="/hubo/joint_states"/>
+	</node>
+    <node name="hubo_trajectory_server" pkg="hubo_motion_ros" type="hubo_trajectory_server" />
+
+	<node name="ps_mount_publisher" pkg="tf" type="static_transform_publisher" args="0.0381 -0.1397 0 0 0 1.57079632679 /Body_NK1 /Body_PS_Mount 100" />
+	<node name="ps1_publisher" pkg="tf" type="static_transform_publisher" args="0.0381 0 0.0127 0 0.84 0 /Body_PS_Mount /camera_link 100" />
+	<node name="ps2_publisher" pkg="tf" type="static_transform_publisher" args="0.0508 0 0.1016 0 0 0 /Body_PS_Mount /Body_PS2 100" />
+
+</launch>
