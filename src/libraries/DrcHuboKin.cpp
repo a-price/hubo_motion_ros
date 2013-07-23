@@ -86,9 +86,9 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 	Eigen::VectorXd xq(q);
 	RobotKin::rk_result_t result;
     RobotKin::Constraints constraint;
-    constraint.wrapSolutionToJointLimits = false;
-    constraint.wrapToJointLimits = false;
-    imposeLimits = false;
+//    constraint.wrapSolutionToJointLimits = false;
+//    constraint.wrapToJointLimits = false;
+//    imposeLimits = false;
     Eigen::VectorXd restValues(7); restValues.setZero();
     restValues[0] = -30*M_PI/180;
     restValues[1] = 0;
