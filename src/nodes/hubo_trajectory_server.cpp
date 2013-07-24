@@ -666,12 +666,14 @@ public:
 		}
 		else if (goal->command.position > 0.01)
 		{
+			std::cerr << "[Manip Server] Setting grasp to close." << std::endl;
 			forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
 			result_g_.position = 1.0;
 			result_g_.effort = 1.0;
 		}
 		else if (goal->command.position < -0.01)
 		{
+			std::cerr << "[Manip Server] Setting grasp to release." << std::endl;
 			forceSetGrasps(manip_grasp_t::MC_RELEASE_NOW, true);
 			result_g_.position = -1.0;
 			result_g_.effort = 1.0;

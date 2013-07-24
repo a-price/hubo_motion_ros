@@ -136,8 +136,9 @@ void clickCallback(const sensor_msgs::JoyPtr joy)
 			actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
 			ac.waitForServer();
 			ac.sendGoal(goal);
-			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 
+			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+            gripperStateClosed = !gripperStateClosed;
 		}
     }
 

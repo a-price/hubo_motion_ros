@@ -13,7 +13,7 @@
 		<remap from="joy_in" to="/spacenav/joy" />
 		<remap from="/joint_states" to="/hubo/joint_states"/>
 	</node>
-	<node name="kinematics_server" pkg="hubo_motion_ros" type="kinematics_server" output="screen" />
+	<node name="ikfast_kinematics_server" pkg="hubo_motion_ros" type="ikfast_kinematics_server" output="screen" />
 	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
 		<remap from="/joint_states" to="/hubo/joint_states"/>
 	</node>
