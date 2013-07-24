@@ -8,8 +8,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS roscpp
  message_generation genmsg actionlib actionlib_msgs
- std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs
- tf tf_conversions eigen_conversions rviz class_loader)
+ std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs visualization_msgs interactive_markers
+ tf tf_conversions eigen_conversions rviz class_loader joystick_integrator)
 
 #find_package(catkin REQUIRED )
 
@@ -77,8 +77,8 @@ catkin_package(
 	LIBRARIES hubo_motion_ros
 	CATKIN_DEPENDS roscpp
  message_runtime genmsg actionlib actionlib_msgs
- std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs
- tf tf_conversions eigen_conversions rviz class_loader
+ std_msgs sensor_msgs geometry_msgs trajectory_msgs control_msgs diagnostic_msgs visualization_msgs interactive_markers
+ tf tf_conversions eigen_conversions rviz class_loader joystick_integrator
 	DEPENDS ach rt QtCore QtGui
 )
 
