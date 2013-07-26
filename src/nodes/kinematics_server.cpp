@@ -155,8 +155,8 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 		else
 		{
 			ROS_ERROR("Joint name '%s' is unknown with new name '%s'.", jointState.name[i].c_str(), kinematics->joint(jointState.name[i]).name().c_str());
-			response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME;
-			return false;
+			//response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_LINK_NAME;
+			//return false;
 		}
 	}
 

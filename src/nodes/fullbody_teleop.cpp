@@ -62,9 +62,13 @@
 
 ros::Subscriber gJoySubscriber;
 ros::ServiceClient gIKinClient;
+ros::ServiceClient gFKinClient;
 ros::Publisher gStatePublisher;
+ros::Publisher gRPosePublisher;
 
 volatile bool mouseInUse = false;
+Eigen::AngleAxisf prevAA;
+
 sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
 JoystickIntegrator joyInt("/Body_TSY");
@@ -80,6 +84,8 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	{ return; }
 	// Update the pose based on the joystick
 	joyInt.spacenavUpdate(joy);
+	gRPosePublisher.publish(joyInt.currentPose);
+	return;
 
 	// Call IK to get the joint states
 	moveit_msgs::GetPositionIKRequest req;
@@ -155,6 +161,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
     }
 
 	prevJoy = *joy;
+	gRPosePublisher.publish(joyInt.currentPose);
 }
 
 
@@ -171,24 +178,69 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  mouseInUse = true;
 	  break;
   case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
+  {
+	  // Compute FK for end effectors that have changed
+	  // Call IK to get the joint states
+	  moveit_msgs::GetPositionFKRequest req;
+	  req.fk_link_names.push_back("RightArm");
+	  req.robot_state.joint_state = planState;
+	  req.header.stamp = ros::Time::now();
+
+	  moveit_msgs::GetPositionFKResponse resp;
+	  gFKinClient.call(req, resp);
+
+	  std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
+
+	  if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+	  {
+		  joyInt.currentPose = resp.pose_stamped[0];
+	  }
+
+
 	  mouseInUse = false;
 	  break;
+  }
 
   case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
+  {
 	  Eigen::AngleAxisf aa;
 	  aa = Eigen::Quaternionf(feedback->pose.orientation.w,
 							  feedback->pose.orientation.x,
 							  feedback->pose.orientation.y,
 							  feedback->pose.orientation.z);
 
+	  RobotKin::Joint& targetJoint = hubo.joint(feedback->marker_name);
+	  float angle;
+	  // Get sign of angle
+	  if (aa.axis().dot(targetJoint.getJointAxis().cast<float>()) < 0)
+	  {
+		  angle = -aa.angle();
+	  }
+	  else
+	  {
+		  angle = aa.angle();
+	  }
+
+	  // Trim angle to joint limits
+	  if (angle > targetJoint.max())
+	  {
+		  angle = targetJoint.max();
+	  }
+	  else if (angle < targetJoint.min())
+	  {
+		  angle = targetJoint.min();
+	  }
+
 	  // Locate the index of the solution joint in the plan state
 	  for (int j = 0; j < planState.name.size(); j++)
 	  {
 		  if (feedback->marker_name == planState.name[j])
 		  {
-			  planState.position[j] = aa.angle();
+			  planState.position[j] = angle;
 		  }
 	  }
+
+	  prevAA = aa;
 
 	  // Time and Frame stamps
 	  planState.header.frame_id = "/Body_TSY";
@@ -197,30 +249,48 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  gStatePublisher.publish(planState);
 	  break;
   }
+  }
 
   gIntServer->applyChanges();
 }
 
 void makeJointMarker(std::string jointName)
 {
+	// RobotKin provides a reasonably easy way to access parsed URDF
+	RobotKin::Joint& targetJoint = hubo.joint(jointName);
+	RobotKin::Joint& parentJoint = targetJoint.parentJoint();
+
+	// The marker must be created in the parent frame so you don't get feedback when you move it
 	visualization_msgs::InteractiveMarker marker;
-	marker.header.frame_id = "/Body_" + jointName;
+	if (parentJoint.name() == "invalid")
+	{
+		marker.header.frame_id = "/Body_Torso";
+	}
+	else
+	{
+		marker.header.frame_id = "/Body_" + parentJoint.name();//jointName;
+	}
 
 	marker.scale = .125;
 	marker.name = jointName;
 
+	geometry_msgs::Pose controlPose = hubo_motion_ros::toPose( targetJoint.respectToFixed().cast<float>());
+	marker.pose = controlPose;
+
 	visualization_msgs::InteractiveMarkerControl control;
 
-	RobotKin::Joint& targetJoint = hubo.joint(jointName);
-	geometry_msgs::Pose controlPose = hubo_motion_ros::toPose( targetJoint.respectToFixed().cast<float>());
+	Eigen::Quaternionf jointAxis;
+	jointAxis.setFromTwoVectors(Eigen::Vector3f::UnitX(), targetJoint.getJointAxis().cast<float>());
 
-	control.orientation = controlPose.orientation;
+	control.orientation.w = jointAxis.w();
+	control.orientation.x = jointAxis.x();
+	control.orientation.y = jointAxis.y();
+	control.orientation.z = jointAxis.z();
 
-//	control.orientation.w = 1;
-//	control.orientation.x = 0;
-//	control.orientation.y = 1;
-//	control.orientation.z = 0;
+	control.always_visible = true;
 	control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
+	control.orientation_mode = visualization_msgs::InteractiveMarkerControl::INHERIT;
+
 	marker.controls.push_back(control);
 
 	gIntServer->insert(marker);
@@ -244,7 +314,22 @@ int main(int argc, char** argv)
 	//ros::Timer frame_timer = n.createTimer(ros::Duration(0.01), frameCallback);
 
 	gIntServer.reset( new interactive_markers::InteractiveMarkerServer("joint_controls","",false) );
-	makeJointMarker("NKY");
+
+	for (int i = 0; i < hubo.linkages().size(); i++)
+	{
+		RobotKin::Linkage* linkage = hubo.linkages()[i];
+		std::cerr << linkage->name();
+		for (int j = 0; j < linkage->joints().size(); j++)
+		{
+			RobotKin::Joint* joint = linkage->joints()[j];
+			if (joint->name()[1] == 'F') { continue; }
+			if (joint->name() == "TSY") { continue; }
+			makeJointMarker(joint->name());
+		}
+	}
+	//makeJointMarker("NKY");
+	//makeJointMarker("NK1");
+	//makeJointMarker("NK2");
 
 	ros::Duration(0.1).sleep();
 
@@ -274,7 +359,9 @@ int main(int argc, char** argv)
 
 	gJoySubscriber = m_nh.subscribe("joy_in", 1, &joyCallback);
 	gIKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
+	gFKinClient = m_nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
 	gStatePublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
+	gRPosePublisher = m_nh.advertise<geometry_msgs::PoseStamped>("rh_pose", 1);
 
 	ros::spin();
 
