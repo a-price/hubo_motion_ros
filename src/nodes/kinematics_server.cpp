@@ -181,6 +181,7 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 		}
 	}
 
+	response.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
 	return true;
 }
 

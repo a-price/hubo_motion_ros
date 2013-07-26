@@ -82,10 +82,20 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 {
 	if (mouseInUse)
 	{ return; }
+	bool allZeros = true;
+	for (int i = 0; i < joy->axes.size(); i++)
+	{
+		if (fabs(joy->axes[i]) > 0.01)
+		{
+			allZeros = false;
+		}
+	}
+	if (allZeros)
+	{ return; }
+
 	// Update the pose based on the joystick
 	joyInt.spacenavUpdate(joy);
 	gRPosePublisher.publish(joyInt.currentPose);
-	return;
 
 	// Call IK to get the joint states
 	moveit_msgs::GetPositionIKRequest req;
@@ -195,8 +205,12 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  {
 		  joyInt.currentPose = resp.pose_stamped[0];
 	  }
+	  else
+	  {
+		  ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
+	  }
 
-
+	  gRPosePublisher.publish(joyInt.currentPose);
 	  mouseInUse = false;
 	  break;
   }
