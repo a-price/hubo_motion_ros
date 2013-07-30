@@ -90,67 +90,72 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 			allZeros = false;
 		}
 	}
-	if (allZeros)
-	{ return; }
 
-	// Update the pose based on the joystick
-	joyInt.spacenavUpdate(joy);
-	gRPosePublisher.publish(joyInt.currentPose);
-
-	// Call IK to get the joint states
-	moveit_msgs::GetPositionIKRequest req;
-	req.ik_request.group_name = "right_arm";
-	req.ik_request.pose_stamped = joyInt.currentPose;
-	req.ik_request.robot_state.joint_state = planState;
-
-	moveit_msgs::GetPositionIKResponse resp;
-	gIKinClient.call(req, resp);
-
-	// Check for valid solution and update the full plan
-	if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+	if (!allZeros)
 	{
-		// Assign all of the new solution joints while preserving the existing ones
-		for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+		// Update the pose based on the joystick
+		joyInt.spacenavUpdate(joy);
+		gRPosePublisher.publish(joyInt.currentPose);
+
+		// Call IK to get the joint states
+		moveit_msgs::GetPositionIKRequest req;
+		req.ik_request.group_name = "right_arm";
+		req.ik_request.pose_stamped = joyInt.currentPose;
+		req.ik_request.robot_state.joint_state = planState;
+
+		moveit_msgs::GetPositionIKResponse resp;
+		gIKinClient.call(req, resp);
+
+		// Check for valid solution and update the full plan
+		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
 		{
-			// Locate the index of the solution joint in the plan state
-			for (int j = 0; j < planState.name.size(); j++)
+			// Assign all of the new solution joints while preserving the existing ones
+			for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
 			{
-				if (resp.solution.joint_state.name[i] == planState.name[j])
+				// Locate the index of the solution joint in the plan state
+				for (int j = 0; j < planState.name.size(); j++)
 				{
-					planState.position[j] = resp.solution.joint_state.position[i];
-					if (resp.solution.joint_state.velocity.size() > i)
-						planState.velocity[j] = resp.solution.joint_state.velocity[i];
-					if (resp.solution.joint_state.effort.size() > i)
-						planState.effort[j] = resp.solution.joint_state.effort[i];
+					if (resp.solution.joint_state.name[i] == planState.name[j])
+					{
+						planState.position[j] = resp.solution.joint_state.position[i];
+						if (resp.solution.joint_state.velocity.size() > i)
+							planState.velocity[j] = resp.solution.joint_state.velocity[i];
+						if (resp.solution.joint_state.effort.size() > i)
+							planState.effort[j] = resp.solution.joint_state.effort[i];
+					}
 				}
 			}
+
+			// Time and Frame stamps
+			planState.header.frame_id = "/Body_TSY";
+			planState.header.stamp = ros::Time::now();
+
+			gStatePublisher.publish(planState);
 		}
-
-		// Time and Frame stamps
-		planState.header.frame_id = "/Body_TSY";
-		planState.header.stamp = ros::Time::now();
-
+	}
+	else
+	{
 		gStatePublisher.publish(planState);
 	}
 
 	// Check for button presses
-    if (prevJoy.buttons.size() > 0 && joy->buttons.size() > 0)
-    {
-        if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
-        {
-            hubo_robot_msgs::JointTrajectoryGoal goal;
-            trajectory_msgs::JointTrajectoryPoint tPoint;
-            for (int i = 0; i < planState.name.size(); i++)
-            {
-                goal.trajectory.joint_names.push_back(planState.name[i]);
-                tPoint.positions.push_back(planState.position[i]);
-            }
-            goal.trajectory.points.push_back(tPoint);
-            actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
-            ac.waitForServer();
-            ac.sendGoal(goal);
-            bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
-        }
+	if (prevJoy.buttons.size() > 0 && joy->buttons.size() > 0)
+	{
+		if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
+		{
+			hubo_robot_msgs::JointTrajectoryGoal goal;
+			trajectory_msgs::JointTrajectoryPoint tPoint;
+			for (int i = 0; i < planState.name.size(); i++)
+			{
+				goal.trajectory.joint_names.push_back(planState.name[i]);
+				tPoint.positions.push_back(planState.position[i]);
+			}
+			goal.trajectory.points.push_back(tPoint);
+			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
+			ac.waitForServer();
+			ac.sendGoal(goal);
+			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+		}
 
 		if (prevJoy.buttons[1] == 0 && joy->buttons[1] != 0)
 		{
@@ -168,7 +173,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 			ac.sendGoal(goal);
 			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 		}
-    }
+	}
 
 	prevJoy = *joy;
 	gRPosePublisher.publish(joyInt.currentPose);
@@ -358,16 +363,16 @@ int main(int argc, char** argv)
 		}
 	}
 
-    for (int side = 0; side < 2; side++)
-        for (int i = 1; i <= 3; i++)
-            for (int j = 1; j <= 3; j++)
-            {
-                std::string sideStr = (side == 0) ? "R" : "L";
-                planState.name.push_back(sideStr + "F" + std::to_string(i) + std::to_string(j));
-                planState.position.push_back(0);
-                planState.velocity.push_back(0);
-                planState.effort.push_back(0);
-            }
+	for (int side = 0; side < 2; side++)
+		for (int i = 1; i <= 3; i++)
+			for (int j = 1; j <= 3; j++)
+			{
+				std::string sideStr = (side == 0) ? "R" : "L";
+				planState.name.push_back(sideStr + "F" + std::to_string(i) + std::to_string(j));
+				planState.position.push_back(0);
+				planState.velocity.push_back(0);
+				planState.effort.push_back(0);
+			}
 
 	gIntServer->applyChanges();
 
