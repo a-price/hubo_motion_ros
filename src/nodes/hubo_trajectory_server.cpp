@@ -150,7 +150,7 @@ public:
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		cmd.waistAngle = 0.0;
 		goalCount++; // Is it better to restart or increment?
-		std::cerr << "Joint Count: " << goal->trajectory.points.size() << std::endl;
+		//std::cerr << "Joints: " << goal->trajectory << std::endl;
 #ifdef JOINTS_NOT_IMPLEMENTED
 
 		// Set command properties for each arm
@@ -179,18 +179,17 @@ public:
 			for (size_t joint = 0; joint < goal->trajectory.joint_names.size(); joint++)
 			{
 				std::string jointName = goal->trajectory.joint_names[joint];
-				std::cerr << jointName;
 				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
 				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
 
 				if (limbIter == DRCHUBO_JOINT_NAME_TO_LIMB.end())
 				{
-					ROS_WARN_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
 					continue;
 				}
 				if (posIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
 				{
-					ROS_WARN_STREAM("Joint Name " << jointName << " does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
 					continue;
 				}
 
@@ -199,14 +198,28 @@ public:
 
 				if (arm != LEFT && arm != RIGHT)
 				{
-					ROS_WARN_STREAM("Joint Name " << jointName << " is not an arm joint.");
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' is not an arm joint.");
 					continue;
 				}
 				cmd.arm_angles[arm][pos] = goal->trajectory.points[point].positions[joint];
 			}
 
 			// Set the wait period
-			tOut = ros::Time::now() + ros::Duration(1.0);
+			ros::Duration waitTime;
+			if (point > 0)
+			{
+				waitTime = goal->trajectory.points[point].time_from_start - goal->trajectory.points[point-1].time_from_start;
+			}
+			else
+			{
+				waitTime = goal->trajectory.points[point].time_from_start;
+			}
+
+			if (waitTime < ros::Duration(1.0))
+			{
+				waitTime = ros::Duration(1.0);
+			}
+			tOut = ros::Time::now() + waitTime;
 
 			// Send the command
 			std::cerr << "Sending Command:\n" << cmd << std::endl;

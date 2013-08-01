@@ -48,17 +48,25 @@
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/Pose.h>
+#include <urdf_model/pose.h>
 
 namespace hubo_motion_ros
 {
+//****************************************
+// Convert to Eigen structures
+//****************************************
+Eigen::Vector3f toEVector3(const urdf::Vector3& vector);
 
-Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose);
-Eigen::Isometry3f toIsometry(tf::Transform pose);
+Eigen::Isometry3f toIsometry(geometry_msgs::Pose& pose);
+Eigen::Isometry3f toIsometry(tf::Transform& pose);
 
-tf::Transform toTF(geometry_msgs::Pose pose);
+//****************************************
+// Convert to TF structures
+//****************************************
+tf::Transform toTF(geometry_msgs::Pose& pose);
 
 template <typename Derived>
-tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
+tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry>& pose)
 {
 	tf::Transform t;
 	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
@@ -68,8 +76,14 @@ tf::Transform toTF(Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
 	return t;
 }
 
+//****************************************
+// Convert to geometry_msgs structures
+//****************************************
+geometry_msgs::Point toGMPoint3(const urdf::Vector3& vector);
+geometry_msgs::Quaternion toGMQuaternion(const urdf::Rotation& rotation);
+
 template <typename Derived>
-geometry_msgs::Pose toPose(const Eigen::Transform<Derived, 3, Eigen::Isometry> pose)
+geometry_msgs::Pose toPose(const Eigen::Transform<Derived, 3, Eigen::Isometry>& pose)
 {
 	geometry_msgs::Pose result;
 	Eigen::Matrix<Derived, 3, 1> eTrans = pose.translation();
@@ -86,7 +100,8 @@ geometry_msgs::Pose toPose(const Eigen::Transform<Derived, 3, Eigen::Isometry> p
 	return result;
 }
 
-geometry_msgs::Pose toPose(tf::Transform pose);
+geometry_msgs::Pose toPose(tf::Transform& pose);
+geometry_msgs::Pose toPose(const urdf::Pose& pose);
 
 } /* namespace hubo_manipulation_planner */
 #endif /* POSECONVERTER_H_ */
