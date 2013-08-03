@@ -67,6 +67,7 @@ ros::ServiceClient gFKinClient;
 ros::Publisher gStatePublisher;
 ros::Publisher gRPosePublisher;
 ros::Publisher gTextPublisher;
+ros::Timer gTimer;
 
 volatile bool mouseInUse = false;
 Eigen::AngleAxisf prevAA;
@@ -384,15 +385,21 @@ void makeSaveButton()
 	gIntServer->setCallback(marker.name, &buttonCallback);
 }
 
+void timerCallback(const ros::TimerEvent&)
+{
+	gStatePublisher.publish(planState);
+	gRPosePublisher.publish(joyInt.currentPose);
+}
+
 int main(int argc, char** argv)
 {
 	ROS_INFO("Started fullbody_teleop.");
 	ros::init(argc, argv, "fullbody_teleop");
 
-	ros::NodeHandle m_nh;
+	ros::NodeHandle nh;
 
 	std::string robotDescription;
-	if (!m_nh.getParam("/robot_description", robotDescription))
+	if (!nh.getParam("/robot_description", robotDescription))
 	{
 		ROS_FATAL("Parameter for robot description not provided");
 	}
@@ -438,12 +445,15 @@ int main(int argc, char** argv)
 	makeSaveButton();
 	gIntServer->applyChanges();
 
-	gJoySubscriber = m_nh.subscribe("joy_in", 1, &joyCallback);
-	gIKinClient = m_nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
-	gFKinClient = m_nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
-	gStatePublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
-	gRPosePublisher = m_nh.advertise<geometry_msgs::PoseStamped>("rh_pose", 1);
-	gTextPublisher = m_nh.advertise<std_msgs::String>("text_out", 1);
+	gJoySubscriber = nh.subscribe("joy_in", 1, &joyCallback);
+	gIKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
+	gFKinClient = nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
+	gStatePublisher = nh.advertise<sensor_msgs::JointState>("joint_states", 1);
+	gRPosePublisher = nh.advertise<geometry_msgs::PoseStamped>("rh_pose", 1);
+	gTextPublisher = nh.advertise<std_msgs::String>("text_out", 1);
+
+	gTimer = nh.createTimer(ros::Duration(1), &timerCallback);
+	gTimer.start();
 
 	ros::spin();
 
