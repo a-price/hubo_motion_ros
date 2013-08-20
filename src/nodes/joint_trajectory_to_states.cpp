@@ -1,7 +1,7 @@
 /**
  *
  * \file joint_trajectory_to_states.cpp
- * \brief 
+ * \brief
  *
  * \author Andrew Price
  * \date Jun 1, 2013
@@ -41,7 +41,7 @@
 
 #include <ros/ros.h>
 
-#include <trajectory_msgs/JointTrajectory.h>
+#include <hubo_robot_msgs/JointTrajectory.h>
 #include <sensor_msgs/JointState.h>
 
 ros::Publisher m_JointPublisher;
@@ -49,7 +49,7 @@ ros::Subscriber m_TrajSubscriber;
 
 sensor_msgs::JointState currentState;
 
-void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
+void trajectoryCallback(hubo_robot_msgs::JointTrajectoryConstPtr jt)
 {
 	ros::Time startTime = ros::Time::now();
 
@@ -75,7 +75,7 @@ void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
 		if (goalTime > ros::Time::now())
 		{
 			(goalTime - ros::Time::now()).sleep();
-			
+
 		}
 
 		js.header.stamp = ros::Time::now();
@@ -86,7 +86,7 @@ void trajectoryCallback(trajectory_msgs::JointTrajectoryConstPtr jt)
 		currentState = js;
 	}
 
-	
+
 }
 
 void republishState()

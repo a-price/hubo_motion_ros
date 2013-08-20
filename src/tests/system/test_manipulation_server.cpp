@@ -207,8 +207,8 @@ ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 hubo_robot_msgs::JointTrajectoryGoal createAngleGoal()
 {
 	hubo_robot_msgs::JointTrajectoryGoal goal;
-	trajectory_msgs::JointTrajectory traj;
-	trajectory_msgs::JointTrajectoryPoint point;
+	hubo_robot_msgs::JointTrajectory traj;
+	hubo_robot_msgs::JointTrajectoryPoint point;
 
 	traj.joint_names.push_back("REP");
 
@@ -224,7 +224,7 @@ hubo_robot_msgs::JointTrajectoryGoal createAngleGoal()
 hubo_robot_msgs::JointTrajectoryGoal createCurlGoal()
 {
 	hubo_robot_msgs::JointTrajectoryGoal goal;
-	trajectory_msgs::JointTrajectory traj;
+	hubo_robot_msgs::JointTrajectory traj;
 	traj.joint_names.push_back("RSP");
 	traj.joint_names.push_back("RSR");
 	traj.joint_names.push_back("RSY");
@@ -236,7 +236,7 @@ hubo_robot_msgs::JointTrajectoryGoal createCurlGoal()
 	int numSteps = 50;
 	for (int i = 0; i < numSteps; i++)
 	{
-		trajectory_msgs::JointTrajectoryPoint point;
+		hubo_robot_msgs::JointTrajectoryPoint point;
 		for (size_t j = 0; j < traj.joint_names.size(); j++)
 		{
 			if (traj.joint_names[j] == "REP")

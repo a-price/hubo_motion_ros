@@ -62,7 +62,7 @@ foreach(action_src_file ${action_source})
 endforeach(action_src_file)
 
 ## Actually generate the language-specific message and service files
-generate_messages(DEPENDENCIES std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs actionlib_msgs)
+generate_messages(DEPENDENCIES std_msgs sensor_msgs geometry_msgs trajectory_msgs diagnostic_msgs actionlib_msgs hubo_robot_msgs)
 
 ###################################
 ## catkin specific configuration ##

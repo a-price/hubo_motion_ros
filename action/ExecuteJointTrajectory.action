@@ -1,6 +1,6 @@
 #goal definition
 bool UseHardTrajectory
-trajectory_msgs/JointTrajectory JointTargets
+hubo_robot_msgs/JointTrajectory JointTargets
 ---
 #result definition
 bool Success

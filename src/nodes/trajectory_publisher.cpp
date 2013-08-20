@@ -40,7 +40,7 @@
  */
 
 #include <ros/ros.h>
-#include <trajectory_msgs/JointTrajectory.h>
+#include <hubo_robot_msgs/JointTrajectory.h>
 
 #include <hubo-zmp.h>
 
@@ -67,7 +67,7 @@ public:
 	ZMPTrajectoryPublisher(HUBO_MODEL hubo) :
 		m_TrajChannel("hubo-zmp-traj")
 	{
-		m_TrajectoryPublisher = m_nh.advertise<trajectory_msgs::JointTrajectory>("/joint_trajectory", 1);
+		m_TrajectoryPublisher = m_nh.advertise<hubo_robot_msgs::JointTrajectory>("/joint_trajectory", 1);
 		m_HuboModel = hubo;
 		ROS_INFO_STREAM("Hubo: " << m_HuboModel);
 	}
@@ -77,7 +77,7 @@ public:
 		// Wait for a new trajectory message from the ach channel
 		zmp_traj trajectory = m_TrajChannel.waitState(waitTime);
 
-		trajectory_msgs::JointTrajectory jt;
+		hubo_robot_msgs::JointTrajectory jt;
 
 		// Add all joint names
 		for (unsigned joint = WST; joint <= LF5; joint++)
@@ -99,7 +99,7 @@ public:
 		// Loop through all active trajectory steps
 		for (size_t i = 0; i < trajectory.count; i++)
 		{
-			trajectory_msgs::JointTrajectoryPoint point;
+			hubo_robot_msgs::JointTrajectoryPoint point;
 
 			// Add the positions for each joint
 			// TODO: do we need to do finite difference method to get V&A?

@@ -43,7 +43,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <moveit_msgs/GetPositionFK.h>
 #include <moveit_msgs/GetPositionIK.h>
-#include <trajectory_msgs/JointTrajectory.h>
+#include <hubo_robot_msgs/JointTrajectory.h>
 
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
@@ -108,7 +108,7 @@ void clickCallback(const sensor_msgs::JoyPtr joy)
         if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
         {
             hubo_robot_msgs::JointTrajectoryGoal goal;
-            trajectory_msgs::JointTrajectoryPoint tPoint;
+            hubo_robot_msgs::JointTrajectoryPoint tPoint;
             for (int i = 0; i < planState.name.size(); i++)
             {
                 goal.trajectory.joint_names.push_back(planState.name[i]);
