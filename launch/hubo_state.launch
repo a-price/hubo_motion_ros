@@ -1,6 +1,6 @@
 <launch>
 	
-	<param name="/robot_description" textfile="$(find drchubo-v2)/robots/drchubo-v2.urdf" />
+	<param name="/robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
 	
 	<node name="hw_state_publisher" pkg="hubo_motion_ros" type="hubo_hw_state_publisher" >
 		<remap from="/joint_states" to="/hubo/joint_states"/>
