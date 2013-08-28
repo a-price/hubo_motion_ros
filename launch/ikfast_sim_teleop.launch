@@ -1,5 +1,5 @@
 <launch>
-	<param name="/robot_description" textfile="$(find drchubo-v2)/robots/drchubo-v2.urdf" />
+	<param name="/robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
     <param name="/position_speed" value="0.05" />
 
 
