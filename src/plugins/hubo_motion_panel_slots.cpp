@@ -1,6 +1,7 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
 
+#include "DummyParams.h"
 
 namespace hubo_motion_ros
 {
@@ -64,6 +65,46 @@ void SpacenavRelay::switchRight(bool active)
         restart = true;
     }
 }
+
+void SpacenavRelay::switchBoth(bool active)
+{
+    if(active)
+    {
+        // Maybe do something here? Probably doesn't matter...
+    }
+}
+
+
+void HuboMotionPanel::switchLeft(bool active)
+{
+    if(active)
+    {
+        teleop_params_t param;
+        param.arm = T_LEFT;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::switchRight(bool active)
+{
+    if(active)
+    {
+        teleop_params_t param;
+        param.arm = T_RIGHT;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::switchBoth(bool active)
+{
+    if(active)
+    {
+        teleop_params_t param;
+        param.arm = T_BOTH;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
 
 void ManipRelay::graspL() { cmd.m_grasp[LEFT] = MC_GRASP_NOW; }
 void ManipRelay::graspR() { cmd.m_grasp[RIGHT] = MC_GRASP_NOW; }

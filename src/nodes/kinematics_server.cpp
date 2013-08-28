@@ -81,6 +81,7 @@ bool ikCallback(moveit_msgs::GetPositionIK::Request& request, moveit_msgs::GetPo
 
 	int arm = 0;
 	Eigen::Isometry3d proposal = hubo_motion_ros::toIsometry(request.ik_request.pose_stamped.pose).cast<double>();
+    proposal = kinematics->joint("RAP").respectToRobot()*proposal;
 	DrcHuboKin::ArmVector q = DrcHuboKin::ArmVector::Zero();
 
 	// Get the arm (group)
@@ -164,7 +165,7 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 	{
 		if (kinematics->linkage(request.fk_link_names[i]).name() != "invalid")
 		{
-			resultFrame = kinematics->linkage(request.fk_link_names[i]).tool().respectToRobot();
+            resultFrame = kinematics->linkage(request.fk_link_names[i]).tool().withRespectTo(kinematics->joint("RAP"));
 
 			geometry_msgs::PoseStamped pose;
 			pose.pose = hubo_motion_ros::toPose(resultFrame);

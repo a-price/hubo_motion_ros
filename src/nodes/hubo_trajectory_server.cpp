@@ -104,7 +104,12 @@ protected:
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
 	AchROSBridge<hubo_manip_traj> trajChannel;
 	AchROSBridge<hubo_manip_param> paramChannel;
+    
+    
+    // TODO: Replace with a ROS message
+    ach_channel_t teleopParamChan;
 
+    
 	unsigned goalCount;
 
 public:
@@ -128,6 +133,9 @@ public:
 		cmdChannel.flush();
 		stateChannel.flush();
 		ROS_INFO("Constructed Server.");
+        
+        // TODO: Replace with a ROS message
+        ach_open(&teleopParamChan, "teleop-param", NULL);
 
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
 	}

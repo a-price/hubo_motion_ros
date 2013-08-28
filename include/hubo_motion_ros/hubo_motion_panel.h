@@ -128,6 +128,7 @@ public:
 public Q_SLOTS:
     void switchLeft(bool active);
     void switchRight(bool active);
+    void switchBoth(bool active);
 
 protected:
     virtual void run();
@@ -143,6 +144,9 @@ class HuboMotionPanel : public rviz::Panel
 public:
     HuboMotionPanel(QWidget *parent = 0);
     ~HuboMotionPanel();
+    
+    
+    ach_channel_t teleopParamChan;
 
     LibertyRelay libertyThread;
     SpacenavRelay spacenavThread;
@@ -167,6 +171,7 @@ private:
     QButtonGroup* sideSel;
     QRadioButton* leftSel;
     QRadioButton* rightSel;
+    QRadioButton* bothSel;
 
     QSlider* waistSlide;
     double waistScale;
@@ -182,6 +187,11 @@ protected Q_SLOTS:
     void getRefreshData(double data, int i, int j);
     void handleLibQuit();
     void handleNavQuit();
+    
+    
+    void switchLeft(bool active);
+    void switchRight(bool active);
+    void switchBoth(bool active);
 
 };
 

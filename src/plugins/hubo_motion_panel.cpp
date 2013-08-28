@@ -24,9 +24,14 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 
     achManager->addChannel(QString::fromLocal8Bit(CHAN_HUBO_MANIP_TRAJ),
                            AchNetworkWidget::ACHD_PUSH, 3, 1000000);
+    
+    achManager->addChannel(QString::fromLocal8Bit("teleop-param"),
+                           AchNetworkWidget::ACHD_CREATE_ONLY);
 
     QVBoxLayout* dumbLayout = new QVBoxLayout;
     dumbLayout->addWidget(achManager);
+    
+    ach_open(&teleopParamChan, "teleop-param", NULL);
 
 
     QHBoxLayout* checkLayout = new QHBoxLayout;
@@ -50,13 +55,21 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     leftSel->setToolTip("Control left arm with SpaceNav");
     leftSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     connect(leftSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchLeft(bool)));
+    connect(leftSel, SIGNAL(toggled(bool)), this, SLOT(switchLeft(bool)));
     selLayout->addWidget(leftSel);
     rightSel = new QRadioButton;
     rightSel->setText("Right");
     rightSel->setToolTip("Control right arm with SpaceNav");
     rightSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     connect(rightSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchRight(bool)));
+    connect(rightSel, SIGNAL(toggled(bool)), this, SLOT(switchRight(bool)));
     selLayout->addWidget(rightSel);
+    bothSel = new QRadioButton;
+    bothSel->setText("Both");
+    bothSel->setToolTip("Control both arms simultaneously");
+    bothSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+    connect(bothSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchBoth(bool)));
+    connect(bothSel, SIGNAL(toggled(bool)), this, SLOT(switchBoth(bool)));
 
     checkLayout->addLayout(selLayout);
 

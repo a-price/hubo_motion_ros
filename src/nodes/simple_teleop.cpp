@@ -54,6 +54,9 @@
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 
+// TODO: Change this to use ROS messages
+#include "DummyParams.h"
+
 ros::Subscriber gPoseSubscriber;
 ros::Subscriber gJoySubscriber;
 ros::ServiceClient gIKinClient;
@@ -64,41 +67,99 @@ sensor_msgs::Joy prevJoy;
 
 bool gripperStateClosed = true;
 
+
+// TODO: Change this to use ROS messages
+ach_channel_t teleopParamChan;
+teleop_params_t params;
+
+
 void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
 {
+    size_t fs;
+    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
+    
 	moveit_msgs::GetPositionIKRequest req;
-	req.ik_request.group_name = "right_arm";
-	req.ik_request.pose_stamped = *poseIn;
-	req.ik_request.robot_state.joint_state = planState;
-
-	moveit_msgs::GetPositionIKResponse resp;
-	gIKinClient.call(req, resp);
-
-    if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
-	{
-		// Assign all of the new solution joints while preserving the existing ones
-		for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
-		{
-			// Locate the index of the solution joint in the plan state
-			for (int j = 0; j < planState.name.size(); j++)
-			{
-				if (resp.solution.joint_state.name[i] == planState.name[j])
-				{
-					planState.position[j] = resp.solution.joint_state.position[i];
-					if (resp.solution.joint_state.velocity.size() > i)
-						planState.velocity[j] = resp.solution.joint_state.velocity[i];
-					if (resp.solution.joint_state.effort.size() > i)
-						planState.effort[j] = resp.solution.joint_state.effort[i];
-				}
-			}
-		}
-
-		// Time and Frame stamps
-		planState.header.frame_id = "/Body_TSY";
-		planState.header.stamp = ros::Time::now();
-
-		gStatePublisher.publish(planState);
-	}
+    
+    if( params.arm==T_LEFT || params.arm==T_RIGHT )
+    {
+        if(params.arm==T_RIGHT)
+            req.ik_request.group_name = "right_arm";
+        else
+            req.ik_request.group_name = "left_arm";
+        
+        req.ik_request.pose_stamped = *poseIn;
+        req.ik_request.robot_state.joint_state = planState;
+    
+        moveit_msgs::GetPositionIKResponse resp;
+        gIKinClient.call(req, resp);
+    
+        if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+        {
+            // Assign all of the new solution joints while preserving the existing ones
+            for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+            {
+                // Locate the index of the solution joint in the plan state
+                for (int j = 0; j < planState.name.size(); j++)
+                {
+                    if (resp.solution.joint_state.name[i] == planState.name[j])
+                    {
+                        planState.position[j] = resp.solution.joint_state.position[i];
+                        if (resp.solution.joint_state.velocity.size() > i)
+                            planState.velocity[j] = resp.solution.joint_state.velocity[i];
+                        if (resp.solution.joint_state.effort.size() > i)
+                            planState.effort[j] = resp.solution.joint_state.effort[i];
+                    }
+                }
+            }
+    
+            // Time and Frame stamps
+            planState.header.frame_id = "/Body_TSY";
+            planState.header.stamp = ros::Time::now();
+    
+            gStatePublisher.publish(planState);
+        }
+    }
+    else if( params.arm==T_BOTH )
+    {
+        // It would be really really really good to be able to visualize the left as well
+        // ... but I have no clue how to do that nicely
+        // This is severely hacked up
+        
+        req.ik_request.group_name = "right_arm";
+        
+        req.ik_request.pose_stamped = *poseIn;
+        req.ik_request.robot_state.joint_state = planState;
+    
+        moveit_msgs::GetPositionIKResponse resp;
+        gIKinClient.call(req, resp);
+    
+        if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+        {
+            // Assign all of the new solution joints while preserving the existing ones
+            for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+            {
+                // Locate the index of the solution joint in the plan state
+                for (int j = 0; j < planState.name.size(); j++)
+                {
+                    if (resp.solution.joint_state.name[i] == planState.name[j])
+                    {
+                        planState.position[j] = resp.solution.joint_state.position[i];
+                        if (resp.solution.joint_state.velocity.size() > i)
+                            planState.velocity[j] = resp.solution.joint_state.velocity[i];
+                        if (resp.solution.joint_state.effort.size() > i)
+                            planState.effort[j] = resp.solution.joint_state.effort[i];
+                    }
+                }
+            }
+    
+            // Time and Frame stamps
+            planState.header.frame_id = "/Body_TSY";
+            planState.header.stamp = ros::Time::now();
+    
+            gStatePublisher.publish(planState);
+        }
+    }
+        
 }
 
 void clickCallback(const sensor_msgs::JoyPtr joy)
@@ -107,6 +168,8 @@ void clickCallback(const sensor_msgs::JoyPtr joy)
     {
         if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
         {
+            
+            
             hubo_robot_msgs::JointTrajectoryGoal goal;
             hubo_robot_msgs::JointTrajectoryPoint tPoint;
             for (int i = 0; i < planState.name.size(); i++)
@@ -150,6 +213,9 @@ int main(int argc, char** argv)
 {
 	ROS_INFO("Started simple_teleop.");
 	ros::init(argc, argv, "simple_teleop");
+    
+    ach_open(&teleopParamChan, "teleop-param", NULL);
+    memset(&params, 0);
 
 	ros::NodeHandle m_nh;
 
