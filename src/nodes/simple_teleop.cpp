@@ -215,7 +215,7 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "simple_teleop");
     
     ach_open(&teleopParamChan, "teleop-param", NULL);
-    memset(&params, 0);
+    memset(&params, 0, sizeof(params));
 
 	ros::NodeHandle m_nh;
 

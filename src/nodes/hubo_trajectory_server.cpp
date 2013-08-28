@@ -165,7 +165,7 @@ public:
 		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
 		{
 			cmd.m_mode[armIdx] = manip_mode_t::MC_ANGLES;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+            cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_LIMP;
 			cmd.interrupt[armIdx] = true;
 		}
@@ -368,7 +368,7 @@ public:
 
 			// Set arm properties
 			cmd.m_mode[armIdx] = manip_mode_t::MC_TRAJ;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_READY;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 			cmd.interrupt[armIdx] = true;
 			cmd.goalID[armIdx] = goalCount;
@@ -469,7 +469,7 @@ public:
 		size_t armIdx = RIGHT;
 		{
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+            cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
 			cmd.interrupt[armIdx] = interrupting;
 			cmd.goalID[armIdx] = goalCount;
@@ -503,7 +503,7 @@ public:
 			if (armIdx > (size_t)NUM_ARMS) {continue;} // Should probably throw warning here...
 
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+            cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
 			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
 			ROS_INFO("Hand: %lu", armIdx);
@@ -535,7 +535,7 @@ public:
 				armIndices.insert(armIdx);
 
 				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
-				cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+                cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 				cmd.interrupt[armIdx] = true;
 				cmd.goalID[armIdx] = goalCount;
 				if (goal->PoseTargets[0].poses.size()-1 == poseIter)
