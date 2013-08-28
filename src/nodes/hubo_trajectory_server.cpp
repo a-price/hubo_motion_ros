@@ -534,7 +534,8 @@ public:
 				if (armIdx > (size_t)NUM_ARMS) {continue;}
 				armIndices.insert(armIdx);
 
-				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
+//				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
+                cmd.m_mode[armIdx] = manip_mode_t::MC_TELEOP;
                 cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 				cmd.interrupt[armIdx] = true;
 				cmd.goalID[armIdx] = goalCount;

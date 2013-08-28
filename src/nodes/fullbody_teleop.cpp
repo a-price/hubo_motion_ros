@@ -56,10 +56,13 @@
 #include <hubo_robot_msgs/JointTrajectoryAction.h>
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
+#include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 
 #include "joystick_integrator/JoystickIntegrator.h"
 
 #include <urdf/model.h>
+
+#include "DummyParams.h"
 
 ros::Subscriber gJoySubscriber;
 ros::ServiceClient gIKinClient;
@@ -74,12 +77,18 @@ Eigen::AngleAxisf prevAA;
 
 sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
-JoystickIntegrator joyInt("/Body_TSY");
+JoystickIntegrator joyInt("/Body_RAP");
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
 
 urdf::Model huboModel;
 
 bool gripperStateClosed = true;
+
+
+// TODO: Change this to use ROS messages
+ach_channel_t teleopParamChan;
+teleop_params_t params;
+
 
 void joyCallback(const sensor_msgs::JoyPtr joy)
 {
@@ -130,7 +139,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 			}
 
 			// Time and Frame stamps
-			planState.header.frame_id = "/Body_TSY";
+            planState.header.frame_id = "/Body_RAP";
 			planState.header.stamp = ros::Time::now();
 
 			gStatePublisher.publish(planState);
@@ -138,6 +147,9 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	}
 	else
 	{
+        // Time and Frame stamps
+        planState.header.frame_id = "/Body_RAP";
+        planState.header.stamp = ros::Time::now();
 		gStatePublisher.publish(planState);
 	}
 
@@ -146,15 +158,27 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	{
 		if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
 		{
-			hubo_robot_msgs::JointTrajectoryGoal goal;
-			hubo_robot_msgs::JointTrajectoryPoint tPoint;
-			for (int i = 0; i < planState.name.size(); i++)
-			{
-				goal.trajectory.joint_names.push_back(planState.name[i]);
-				tPoint.positions.push_back(planState.position[i]);
-			}
-			goal.trajectory.points.push_back(tPoint);
-			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
+
+
+
+//			hubo_robot_msgs::JointTrajectoryGoal goal;
+//			hubo_robot_msgs::JointTrajectoryPoint tPoint;
+            hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+//			for (int i = 0; i < planState.name.size(); i++)
+//			{
+//				goal.trajectory.joint_names.push_back(planState.name[i]);
+//				tPoint.positions.push_back(planState.position[i]);
+//			}
+//			goal.trajectory.points.push_back(tPoint);
+
+            goal.ArmIndex.push_back(RIGHT); // TODO
+            geometry_msgs::PoseArray kittens;
+            kittens.poses.push_back(joyInt.currentPose.pose);
+            goal.PoseTargets.push_back(kittens);
+
+
+//			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
+            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
 			ac.waitForServer();
 			ac.sendGoal(goal);
 			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
@@ -303,7 +327,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  prevAA = aa;
 
 	  // Time and Frame stamps
-	  planState.header.frame_id = "/Body_TSY";
+      planState.header.frame_id = "/Body_RAP";
 	  planState.header.stamp = ros::Time::now();
 
 	  gStatePublisher.publish(planState);
@@ -352,7 +376,7 @@ void makeJointMarker(std::string jointName)
 void makeSaveButton()
 {
 	visualization_msgs::InteractiveMarker marker;
-	marker.header.frame_id = "/Body_TSY";
+    marker.header.frame_id = "/Body_RAP";
 	marker.scale = 0.1;
 
 	marker.name = "TestButton";
@@ -395,6 +419,9 @@ int main(int argc, char** argv)
 {
 	ROS_INFO("Started fullbody_teleop.");
 	ros::init(argc, argv, "fullbody_teleop");
+
+    ach_open(&teleopParamChan, "teleop-param", NULL);
+    memset(&params, 0, sizeof(params));
 
 	ros::NodeHandle nh;
 

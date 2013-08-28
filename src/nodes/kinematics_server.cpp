@@ -169,7 +169,7 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 
 			geometry_msgs::PoseStamped pose;
 			pose.pose = hubo_motion_ros::toPose(resultFrame);
-			pose.header.frame_id = "/Body_TSY";
+            pose.header.frame_id = "/Body_RAP";
 			pose.header.stamp = ros::Time::now();
 			response.pose_stamped.push_back(pose);
 			response.fk_link_names.push_back(request.fk_link_names[i]);

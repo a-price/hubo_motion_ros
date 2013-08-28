@@ -113,7 +113,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
             }
     
             // Time and Frame stamps
-            planState.header.frame_id = "/Body_TSY";
+            planState.header.frame_id = "/Body_RAP";
             planState.header.stamp = ros::Time::now();
     
             gStatePublisher.publish(planState);
@@ -153,7 +153,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
             }
     
             // Time and Frame stamps
-            planState.header.frame_id = "/Body_TSY";
+            planState.header.frame_id = "/Body_RAP";
             planState.header.stamp = ros::Time::now();
     
             gStatePublisher.publish(planState);
@@ -166,6 +166,10 @@ void clickCallback(const sensor_msgs::JoyPtr joy)
 {
     if (prevJoy.buttons.size() > 0 && joy->buttons.size() > 0)
     {
+
+        size_t fs;
+        ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
+
         if (prevJoy.buttons[0] == 0 && joy->buttons[0] != 0)
         {
             
