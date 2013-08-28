@@ -1,0 +1,11 @@
+<launch>
+	<arg name="sim" default="true" />
+	<group ns="hubo">
+		<group ns="motion">
+			<param name="spoof_daemon" value="$(arg sim)" />
+			<node name="hubo_trajectory_server" pkg="hubo_motion_ros" type="hubo_trajectory_server" output="screen"/>
+			<!--test name="test_manipulation_server" pkg="hubo_motion_ros" type="test_manipulation_server" test-name="test_manipulation_server" /-->
+			<node name="test_manipulation_server" pkg="hubo_motion_ros" type="test_manipulation_server" output="screen"/>
+		</group>
+	</group>
+</launch>

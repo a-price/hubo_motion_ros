@@ -1,6 +1,6 @@
 /**
  *
- * \file hubo_manip_traj_forwarder.cpp
+ * \file hubo_trajectory_server.cpp
  * \brief Subscribes to ROS topics containing manipulation goal information, forwards that information over ach, and reports on the progress.
  *
  * \author Andrew Price
@@ -51,10 +51,16 @@
 
 #include <HuboKin.h>
 
-#include "hubo_motion_ros/hubo_joint_names.h"
+#include <hubo_robot_msgs/JointTrajectoryAction.h>
+#include <hubo_robot_msgs/PoseTrajectoryAction.h>
+#include <hubo_robot_msgs/HybridTrajectoryAction.h>
+
+#include <control_msgs/GripperCommandAction.h>
+
+#include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
-#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
+//#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
 #define JOINTS_NOT_IMPLEMENTED
@@ -76,9 +82,12 @@ protected:
 	ros::NodeHandle nh_;
 	// NodeHandle instance must be created before this line. Otherwise strange error may occur.
 	actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
-	actionlib::SimpleActionServer<hubo_motion_ros::ExecuteJointTrajectoryAction> asj_;
+	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
+	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
+
 	std::string action_name_j_;
 	std::string action_name_p_;
+	std::string action_name_g_;
 
 	ros::Publisher finalHandPub;
 
@@ -86,8 +95,10 @@ protected:
 	hubo_motion_ros::ExecutePoseTrajectoryFeedback feedback_p_;
 	hubo_motion_ros::ExecutePoseTrajectoryResult result_p_;
 
-	hubo_motion_ros::ExecuteJointTrajectoryFeedback feedback_j_;
-	hubo_motion_ros::ExecuteJointTrajectoryResult result_j_;
+	hubo_robot_msgs::JointTrajectoryFeedback feedback_j_;
+	hubo_robot_msgs::JointTrajectoryResult result_j_;
+
+	control_msgs::GripperCommandResult result_g_;
 
 	AchROSBridge<hubo_manip_state> stateChannel;
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
@@ -101,8 +112,10 @@ public:
 	HuboManipulationAction(std::string name) :
 		asp_(nh_, name + "_pose", boost::bind(&HuboManipulationAction::executePoseCB, this, _1), false),
 		asj_(nh_, name + "_joint", boost::bind(&HuboManipulationAction::executeJointCB, this, _1), false),
+		asg_(nh_, name + "_gripper", boost::bind(&HuboManipulationAction::executeGripperCB, this, _1), false),
 		action_name_j_(name + "_joint"),
 		action_name_p_(name + "_pose"),
+		action_name_g_(name + "_gripper"),
 		cmdChannel(CHAN_HUBO_MANIP_CMD),
 		trajChannel(CHAN_HUBO_MANIP_TRAJ),
 		paramChannel(CHAN_HUBO_MANIP_PARAM),
@@ -110,7 +123,10 @@ public:
 	{
 		asp_.start();
 		asj_.start();
+		asg_.start();
 		goalCount = 1;
+		cmdChannel.flush();
+		stateChannel.flush();
 		ROS_INFO("Constructed Server.");
 
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
@@ -120,59 +136,211 @@ public:
 	{
 	}
 
-	void executeJointCB(const hubo_motion_ros::ExecuteJointTrajectoryGoalConstPtr &goal)
+	void executeJointCB(const hubo_robot_msgs::JointTrajectoryGoalConstPtr &goal)
 	{
-#ifdef JOINTS_NOT_IMPLEMENTED
-		HK::HuboKin kinematics;
-		std::vector<Eigen::Isometry3f> poses(goal->JointTargets.points.size());
-		ros::Time tStart = ros::Time::now();
-		ros::Duration sleepTime;
-
-		actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac(
-					"hubo_trajectory_server_pose", true);
-
-		for (size_t point = 0; point < goal->JointTargets.points.size(); point++)
-		{
-			HK::Vector6f q;
-			for (size_t joint = 0; joint < goal->JointTargets.joint_names.size(); joint++)
-			{
-				unsigned pos = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets.joint_names[joint])->second;
-				q[pos] = goal->JointTargets.points[point].positions[joint];
-			}
-			kinematics.armFK(poses[point],q, LEFT);
-			ROS_INFO_STREAM("Sending pose: \n" << poses[point].matrix());
-			geometry_msgs::Pose poseMsg = toPose(poses[point]);
-			ExecutePoseTrajectoryGoal newGoal;
-
-			geometry_msgs::PoseArray pArray;
-			pArray.poses.push_back(poseMsg);
-			newGoal.PoseTargets.push_back(pArray);
-			newGoal.ArmIndex.push_back(LEFT);
-			newGoal.ClosedStateAtBeginning.push_back(false);
-			newGoal.ClosedStateAtEnd.push_back(false);
-
-
-			if (tStart + goal->JointTargets.points[point].time_from_start > ros::Time::now())
-			{
-				sleepTime = (tStart + goal->JointTargets.points[point].time_from_start - ros::Time::now());
-				sleepTime.sleep();
-			}
-
-			ac.sendGoal(newGoal);
-
-		}
-		result_j_.Success = true;
-		asj_.setSucceeded(result_j_);
-#else
 		bool preempted = false, error = false, completed = false;
-		result_j_.Success = false;
+		bool staleWarning = true, errorWarning = true, channelWarning = true;
+		///////////result_j_.Success = false;
+		ros::Time tOut;
 		hubo_manip_cmd_t cmd;
-		hubo_manip_traj_t traj;
+		memset(&cmd, 0, sizeof(cmd));
 
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
-		goalCount++;
+		cmd.waistAngle = 0.0;
+		goalCount++; // Is it better to restart or increment?
+		//std::cerr << "Joints: " << goal->trajectory << std::endl;
+#ifdef JOINTS_NOT_IMPLEMENTED
+
+		// Set command properties for each arm
+		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			cmd.m_mode[armIdx] = manip_mode_t::MC_ANGLES;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
+			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_LIMP;
+			cmd.interrupt[armIdx] = true;
+		}
+
+		// Send an "MC_ANGLES" command for each timestep
+		for (size_t point = 0; point < goal->trajectory.points.size(); point++)
+		{
+			// Reset error flags
+			preempted = false; error = false; completed = false;
+
+			// Set the goal count for all arms
+			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+			{
+				std::cerr << "Goal ID: " << goalCount << std::endl;
+				cmd.goalID[armIdx] = goalCount;
+			}
+
+			// Assign all joint targets to their positions in the command structure arrays.
+			for (size_t joint = 0; joint < goal->trajectory.joint_names.size(); joint++)
+			{
+				std::string jointName = goal->trajectory.joint_names[joint];
+				auto limbIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
+				auto posIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(jointName);
+
+				if (limbIter == DRCHUBO_JOINT_NAME_TO_LIMB.end())
+				{
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' does not exist in DRCHUBO_JOINT_NAME_TO_LIMB.");
+					continue;
+				}
+				if (posIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
+				{
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' does not exist in DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.");
+					continue;
+				}
+
+				unsigned arm = limbIter->second;
+				unsigned pos = posIter->second;
+
+				if (arm != LEFT && arm != RIGHT)
+				{
+					ROS_WARN_STREAM("Joint Name '" << jointName << "' is not an arm joint.");
+					continue;
+				}
+				cmd.arm_angles[arm][pos] = goal->trajectory.points[point].positions[joint];
+			}
+
+			// Set the wait period
+			ros::Duration waitTime;
+			if (point > 0)
+			{
+				waitTime = goal->trajectory.points[point].time_from_start - goal->trajectory.points[point-1].time_from_start;
+			}
+			else
+			{
+				waitTime = goal->trajectory.points[point].time_from_start;
+			}
+
+			if (waitTime < ros::Duration(1.0))
+			{
+				waitTime = ros::Duration(1.0);
+			}
+			tOut = ros::Time::now() + waitTime;
+
+			// Send the command
+			std::cerr << "Sending Command:\n" << cmd << std::endl;
+			cmdChannel.pushState(cmd);
+
+			// Wait for completion, failure, or timeout, while checking for feedback or preemption
+			hubo_manip_state_t state;
+			while (!preempted && !completed && !error && ros::ok())
+			{
+				// check that preempt has not been requested by the client
+				if (asp_.isPreemptRequested())
+				{
+					ROS_WARN("%s: Preempted", action_name_j_.c_str());
+					// set the action state to preempted
+					asp_.setPreempted();
+					preempted = true;
+					return;
+				}
+				else if (asp_.isNewGoalAvailable())
+				{
+					ROS_WARN("New Goal available.");
+				}
+
+				// Check for timeout
+				if (tOut < ros::Time::now())
+				{
+					ROS_WARN("Goal Timed out.");
+					error = true;
+					break;
+				}
+
+				// read the state channel
+				ach_status_t achResult;
+				completed = true;
+				state = stateChannel.waitState(50, &achResult, false);
+
+				if (ACH_OK != achResult && ACH_MISSED_FRAME != achResult)
+				{
+					completed = false;
+					ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+						CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
+					continue;
+				}
+				else if (ACH_TIMEOUT == achResult)
+				{
+					completed = false;
+					if (channelWarning)
+					{
+						ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
+								  CHAN_HUBO_MANIP_STATE, achResult, ach_result_to_string((ach_status_t)achResult));
+						channelWarning = false;
+					}
+					continue;
+				}
+				else
+				{
+					//std::cerr << "Got good state:\n" << state << std::endl;
+				}
+
+				for (int arm = 0; arm < NUM_ARMS; arm++)
+				{
+					///////////feedback_j_.CommandState = state.mode_state[arm];
+					///////////feedback_j_.GraspState = state.grasp_state[arm];
+					///////////feedback_j_.ErrorState = state.error[arm];
+
+					// Data is from an old command
+					if (state.goalID[arm] != goalCount)
+					{
+						completed = false;
+						error = false;
+						if (staleWarning)
+						{
+							ROS_WARN("Got old cmd ID: %i, arm: %i", state.goalID[arm], arm);
+							staleWarning = false;
+						}
+						continue;
+					}
+
+					completed = completed &&
+							((state.mode_state[arm] == manip_mode_t::MC_READY) ||
+							(state.mode_state[arm] == manip_mode_t::MC_HALT));
+					error = error || state.error[arm] != manip_error_t::MC_NO_ERROR;
+
+					if (error && errorWarning)
+					{
+						ROS_ERROR("Manipulation State Error: %i for arm %i", state.error[arm], arm);
+						errorWarning = false;
+					}
+
+					if (completed)
+					{
+						ROS_INFO("Manipulation State Completed: %i for arm %i", state.mode_state[arm], arm);
+					}
+				}
+
+				// publish the feedback
+				asj_.publishFeedback(feedback_j_);
+			}
+
+			// Increment the goal counter
+			goalCount++;
+			staleWarning = true;
+			channelWarning = true;
+			errorWarning = true;
+
+		}
+
+		std::cerr << "error: " << error << std::endl;
+		bool success = (completed && !error && !preempted);
+		///////////result_j_.Success = (uint8_t)success;// ? 1 : 0;
+		if (success)
+		{
+			asj_.setSucceeded(result_j_);
+		}
+		else
+		{
+			asj_.setAborted(result_j_);
+		}
+#else
+
+		hubo_manip_traj_t traj;
 
 		// Iterate through all arms provided
 		for (int armIter = 0; armIter < std::min(goal->ArmIndex.size(),(size_t)NUM_ARMS); armIter++)
@@ -199,24 +367,24 @@ public:
 
 			std::map<std::string, int>::const_iterator mapIter;
 			// Iterate through all joints in each step
-			for (int jointIter = 0; jointIter < goal->JointTargets[armIter].joint_names.size(); jointIter++)
+			for (int jointIter = 0; jointIter < goal->trajectory[armIter].joint_names.size(); jointIter++)
 			{
 				// Get joint index for joint name
-				mapIter = HUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->JointTargets[armIter].joint_names[jointIter]);
-				if (mapIter == HUBO_JOINT_NAME_TO_LIMB_POSITION.end())
+				mapIter = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.find(goal->trajectory[armIter].joint_names[jointIter]);
+				if (mapIter == DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.end())
 				{
-					ROS_ERROR("Joint name '%s' is unknown.", goal->JointTargets[armIter].joint_names[jointIter].c_str());
+					ROS_ERROR("Joint name '%s' is unknown.", goal->trajectory[armIter].joint_names[jointIter].c_str());
 					continue;
 				}
 				size_t jointIdx = mapIter->second;
 
 				// Iterate through all timesteps
-				for (int timeStep = 0; timeStep < std::min(goal->JointTargets[armIter].points.size(), (size_t)MAX_TRAJ_SIZE); timeStep++)
+				for (int timeStep = 0; timeStep < std::min(goal->trajectory[armIter].points.size(), (size_t)MAX_TRAJ_SIZE); timeStep++)
 				{
 					// Assign all step parameters
-					traj.arm_angles[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].positions[jointIter];
-					traj.arm_speeds[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].velocities[jointIter];
-					traj.arm_accels[armIdx][jointIdx][timeStep] = goal->JointTargets[armIter].points[timeStep].accelerations[jointIter];
+					traj.arm_angles[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].positions[jointIter];
+					traj.arm_speeds[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].velocities[jointIter];
+					traj.arm_accels[armIdx][jointIdx][timeStep] = goal->trajectory[armIter].points[timeStep].accelerations[jointIter];
 				}
 			}
 		}
@@ -282,12 +450,15 @@ public:
 	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
 	{
 		hubo_manip_cmd_t cmd;
+		memset(&cmd, 0, sizeof(cmd));
+
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 		goalCount++;
 
 		// Set the initial hand state
-		for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		//for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		size_t armIdx = RIGHT;
 		{
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
 			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_NONE;
@@ -305,8 +476,9 @@ public:
 		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
-		result_p_.Success = false;
+		///////////result_p_.Success = false;
 		hubo_manip_cmd_t cmd;
+		memset(&cmd, 0, sizeof(cmd));
 
 		ros::Time tOut;
 
@@ -386,7 +558,7 @@ public:
 
 			// Publish the target hand positions for debugging purposes
 			currentPoses.header.stamp = ros::Time::now();
-			currentPoses.header.frame_id = "/Body_Torso";
+			currentPoses.header.frame_id = "/Body_Hip";
 			finalHandPub.publish(currentPoses);
 
 
@@ -428,9 +600,9 @@ public:
 					{
 						continue;
 					}
-					feedback_p_.CommandState = state.mode_state[arm];
-					feedback_p_.GraspState = state.grasp_state[arm];
-					feedback_p_.ErrorState = state.error[arm];
+					///////////feedback_p_.CommandState = state.mode_state[arm];
+					///////////feedback_p_.GraspState = state.grasp_state[arm];
+					///////////feedback_p_.ErrorState = state.error[arm];
 
 					// Data is from an old command
 					if (state.goalID[arm] != goalCount)
@@ -476,7 +648,7 @@ public:
 		{
 			ROS_INFO("Completed Goal.");
 		}
-		result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
+		///////////result_p_.Success = (completed && !error && !preempted) ? 1 : 0;
 		if (result_p_.Success)
 		{
 			asp_.setSucceeded(result_p_);
@@ -486,6 +658,43 @@ public:
 			asp_.setAborted(result_p_);
 		}
 		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
+	}
+
+	void executeGripperCB(const control_msgs::GripperCommandGoalConstPtr& goal)
+	{
+		if (fabs(goal->command.position) <= 0.01)
+		{
+			if (fabs(goal->command.max_effort) <= 0.01)
+			{
+				forceSetGrasps(manip_grasp_t::MC_GRASP_LIMP, true);
+				result_g_.position = 0.0;
+				result_g_.effort = 0.0;
+			}
+			else
+			{
+				forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, true);
+				result_g_.position = 0.0;
+				result_g_.effort = 1.0;
+			}
+		}
+		else if (goal->command.position > 0.01)
+		{
+			std::cerr << "[Manip Server] Setting grasp to close." << std::endl;
+			forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
+			result_g_.position = 1.0;
+			result_g_.effort = 1.0;
+		}
+		else if (goal->command.position < -0.01)
+		{
+			std::cerr << "[Manip Server] Setting grasp to release." << std::endl;
+			forceSetGrasps(manip_grasp_t::MC_RELEASE_NOW, true);
+			result_g_.position = -1.0;
+			result_g_.effort = 1.0;
+		}
+
+		result_g_.reached_goal = true;
+		result_g_.stalled = false;
+		asg_.setSucceeded(result_g_);
 	}
 };
 

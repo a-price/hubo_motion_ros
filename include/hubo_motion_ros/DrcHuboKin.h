@@ -1,18 +1,17 @@
 /**
- *
- * \file ach_monitor.cpp
- * \brief 
+ * \file DrcHuboKin.h
+ * \brief
  *
  * \author Andrew Price
- * \date May 23, 2013
+ * \date July 19, 2013
  *
  * \copyright
+ *
  * Copyright (c) 2013, Georgia Tech Research Corporation
  * All rights reserved.
  *
  * Humanoid Robotics Lab Georgia Institute of Technology
  * Director: Mike Stilman http://www.golems.org
- *
  *
  * This file is provided under the following "BSD-style" License:
  * Redistribution and use in source and binary forms, with or
@@ -39,56 +38,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
-#include <manip.h>
+#ifndef DRCHUBOKIN_H
+#define DRCHUBOKIN_H
 
-#include "hubo_motion_ros/AchMonitor.h"
+#include <RobotKin/Robot.h>
 
-/*
-std::ostream& operator<<(std::ostream& os, const hubo_manip_state& obj)
+const int DRCHUBO_ARM_JOINT_COUNT = 7;
+const int DRCHUBO_LEG_JOINT_COUNT = 6;
+
+/**
+ * @class DrcHuboKin
+ * @brief A class providing kinematic calculations for DRC-Hubo
+ */
+class DrcHuboKin : public RobotKin::Robot
 {
-	for (size_t arm = 0; arm < NUM_ARMS; arm++)
-	{
-		os << "Arm " << arm << " Manipulation State\n";
-		os << "Goal ID: " << obj.goalID[arm] << "\n";
-		os << "Mode: " << obj.mode_state[arm] << "\n";
-		os << "Grasp: " << obj.grasp_state[arm] << "\n";
-		os << "Error: " << obj.error[arm] << "\n";
-	}
-	return os;
-}
+public:
+	typedef Eigen::Matrix< double, DRCHUBO_ARM_JOINT_COUNT, 1 > ArmVector;
+	typedef Eigen::Matrix< double, DRCHUBO_LEG_JOINT_COUNT, 1 > LegVector;
 
-std::ostream& operator<<(std::ostream& os, const hubo_manip_cmd& obj)
-{
-	for (size_t arm = 0; arm < NUM_ARMS; arm++)
-	{
-		os << "Arm " << arm << " Manipulation State\n";
-		os << "Goal ID: " << obj.goalID[arm] << "\n";
-		os << "Mode: " << obj.m_mode[arm] << "\n";
-		os << "Grasp: " << obj.m_grasp[arm] << "\n";
-		//os << "Error: " << obj.pose[arm] << "\n";
-	}
-	return os;
-}*/
+	/**
+	 * @brief DrcHuboKin
+	 * @param filename
+	 */
+	DrcHuboKin(std::string urdf = "/etc/hubo-ach/drchubo.urdf", bool isFiletext = false);
 
-int main(int argc, char** argv)
-{
-	ROS_INFO("Started ach_monitor.");
-	ros::init(argc, argv, "ach_monitor", ros::init_options::NoSigintHandler);
-	ros::NodeHandle nh;
-	//hubo_motion_ros::AchMonitor<hubo_manip_state> stateChannel("manip-state");
-	hubo_motion_ros::AchMonitor<hubo_manip_cmd> stateChannel("manip-cmd");
+	/**
+	 * @brief legIK
+	 * @param side
+	 * @param q
+	 * @param B
+	 * @return
+	 */
+	RobotKin::rk_result_t legIK(int side, LegVector &q, const Eigen::Isometry3d B);
 
-	ros::Rate r(1);
+	/**
+	 * @brief armIK
+	 * @param side
+	 * @param q
+	 * @param B
+	 * @return
+	 */
+	RobotKin::rk_result_t armIK(int side, ArmVector &q, const Eigen::Isometry3d B);
 
-	while(ros::ok())
-	{
-		fprintf(stderr, "a.");
-		stateChannel.waitState(1000);
-		fprintf(stderr, "b");
-		r.sleep();
-	}
+};
 
-	return 0;
-}
-
+#endif // DRCHUBOKIN_H

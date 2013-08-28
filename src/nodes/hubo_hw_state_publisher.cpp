@@ -35,17 +35,10 @@ public:
 	void publishState()
 	{
 		sensor_msgs::Imu iState = m_HuboState.getIMUState(true);
-		iState.header.frame_id = "/Body_Torso";
+		iState.header.frame_id = "/Body_Hip";
 		m_ImuPublisher.publish(iState);
 
 		sensor_msgs::JointState jState = m_HuboState.getJointState(false);
-		jState.name.push_back("HNP");
-		jState.position.push_back(0);
-		jState.velocity.push_back(0);
-
-		jState.name.push_back("HNR");
-		jState.position.push_back(0);
-		jState.velocity.push_back(0);
 
 		const hubo_state& state = m_HuboState.getState(false);
 
@@ -56,11 +49,11 @@ public:
 			if (hand == LEFT) {handName = "left";}
 			else {handName = "right";}
 
-			for (int finger = 0; finger < sizeof(HUBO_URDF_FINGER_NAMES)/sizeof(std::string); finger++)
+			for (int finger = 0; finger < sizeof(DRCHUBO_URDF_FINGER_NAMES)/sizeof(std::string); finger++)
 			{
-				for (int joint = 2; joint <= sizeof(HUBO_URDF_FINGER_LINK_NAMES)/sizeof(std::string); joint++)
+				for (int joint = 2; joint <= sizeof(DRCHUBO_URDF_FINGER_LINK_NAMES)/sizeof(std::string); joint++)
 				{
-					jointName = handName + HUBO_URDF_FINGER_NAMES[finger] + "Knuckle" + std::to_string(joint);
+					jointName = handName + DRCHUBO_URDF_FINGER_NAMES[finger] + "Knuckle" + std::to_string(joint);
 					jState.name.push_back(jointName);
 					jState.position.push_back(0);
 					jState.velocity.push_back(0);
@@ -72,23 +65,23 @@ public:
 
 		// Have to publish head separately, since we don't have an accurate URDF
 		// TODO: Replace with values derived from known angles + calibration
-		Eigen::Affine3f psA, psB;
-		psA = Eigen::Affine3f::Identity();
-		psB = Eigen::Affine3f::Identity();
+//		Eigen::Affine3f psA, psB;
+//		psA = Eigen::Affine3f::Identity();
+//		psB = Eigen::Affine3f::Identity();
 
-		const float alpha = 0.84, beta = 0;//0.86602540378, beta = 1.04719755;
-		psA.translate(Eigen::Vector3f(0.04, 0.04, 0.015));
-		psA.rotate(Eigen::Quaternionf(cos(alpha/2), 0, sin(alpha/2), 0).normalized());
+//		const float alpha = 0.84, beta = 0;//0.86602540378, beta = 1.04719755;
+//		psA.translate(Eigen::Vector3f(0.04, 0.04, 0.015));
+//		psA.rotate(Eigen::Quaternionf(cos(alpha/2), 0, sin(alpha/2), 0).normalized());
 
-		psB.translate(Eigen::Vector3f(0.035, 0.04, 0.073));
-		psB.rotate(Eigen::Quaternionf(cos(beta/2), 0, sin(beta/2), 0).normalized());
+//		psB.translate(Eigen::Vector3f(0.035, 0.04, 0.073));
+//		psB.rotate(Eigen::Quaternionf(cos(beta/2), 0, sin(beta/2), 0).normalized());
 
-		tf::Transform tfA,tfB;
-		tf::transformEigenToTF(psA.cast<double>(), tfA);
-		tf::transformEigenToTF(psB.cast<double>(), tfB);
+//		tf::Transform tfA,tfB;
+//		tf::transformEigenToTF(psA.cast<double>(), tfA);
+//		tf::transformEigenToTF(psB.cast<double>(), tfB);
 
-		m_TFBroad.sendTransform(tf::StampedTransform(tfA, ros::Time::now(), "/Body_HNP", "/camera_link"));
-		m_TFBroad.sendTransform(tf::StampedTransform(tfB, ros::Time::now(), "/Body_HNP", "/camera_link1"));
+//		m_TFBroad.sendTransform(tf::StampedTransform(tfA, ros::Time::now(), "/Body_NK1", "/camera_link"));
+//		m_TFBroad.sendTransform(tf::StampedTransform(tfB, ros::Time::now(), "/Body_NK1", "/camera_link1"));
 	}
 
 protected:

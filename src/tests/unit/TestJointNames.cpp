@@ -1,18 +1,17 @@
 /**
- *
- * \file ach_monitor.cpp
- * \brief 
+ * \file TestJointNames.cpp
+ * \brief Verifies operation of ParameterizedObject classes
  *
  * \author Andrew Price
- * \date May 23, 2013
+ * \date July 7, 2013
  *
  * \copyright
+ *
  * Copyright (c) 2013, Georgia Tech Research Corporation
  * All rights reserved.
  *
  * Humanoid Robotics Lab Georgia Institute of Technology
  * Director: Mike Stilman http://www.golems.org
- *
  *
  * This file is provided under the following "BSD-style" License:
  * Redistribution and use in source and binary forms, with or
@@ -39,56 +38,62 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
-#include <manip.h>
+//#include "gtest/gtest.h"
+#include <cppunit/TestFixture.h>
+#include <cppunit/extensions/HelperMacros.h>
 
-#include "hubo_motion_ros/AchMonitor.h"
+#include "hubo_motion_ros/drchubo_joint_names.h"
 
-/*
-std::ostream& operator<<(std::ostream& os, const hubo_manip_state& obj)
+//using namespace hubo_motion_ros;
+
+class TestJointNames : public CppUnit::TestFixture
 {
-	for (size_t arm = 0; arm < NUM_ARMS; arm++)
+	CPPUNIT_TEST_SUITE( TestJointNames );
+	CPPUNIT_TEST(TestNameGetSet);
+	CPPUNIT_TEST_SUITE_END();
+public:
+
+	virtual void setUp()
 	{
-		os << "Arm " << arm << " Manipulation State\n";
-		os << "Goal ID: " << obj.goalID[arm] << "\n";
-		os << "Mode: " << obj.mode_state[arm] << "\n";
-		os << "Grasp: " << obj.grasp_state[arm] << "\n";
-		os << "Error: " << obj.error[arm] << "\n";
-	}
-	return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const hubo_manip_cmd& obj)
-{
-	for (size_t arm = 0; arm < NUM_ARMS; arm++)
-	{
-		os << "Arm " << arm << " Manipulation State\n";
-		os << "Goal ID: " << obj.goalID[arm] << "\n";
-		os << "Mode: " << obj.m_mode[arm] << "\n";
-		os << "Grasp: " << obj.m_grasp[arm] << "\n";
-		//os << "Error: " << obj.pose[arm] << "\n";
-	}
-	return os;
-}*/
-
-int main(int argc, char** argv)
-{
-	ROS_INFO("Started ach_monitor.");
-	ros::init(argc, argv, "ach_monitor", ros::init_options::NoSigintHandler);
-	ros::NodeHandle nh;
-	//hubo_motion_ros::AchMonitor<hubo_manip_state> stateChannel("manip-state");
-	hubo_motion_ros::AchMonitor<hubo_manip_cmd> stateChannel("manip-cmd");
-
-	ros::Rate r(1);
-
-	while(ros::ok())
-	{
-		fprintf(stderr, "a.");
-		stateChannel.waitState(1000);
-		fprintf(stderr, "b");
-		r.sleep();
 	}
 
-	return 0;
-}
+	virtual void tearDown () {}
 
+	void TestNameGetSet()
+	{
+		for (int i = 0; i < HUBO_JOINT_COUNT; i++)
+		{
+			std::string jointName = DRCHUBO_URDF_JOINT_NAMES[i];
+			if (jointName == "")
+			{
+				continue;
+			}
+			auto jointIter = DRCHUBO_JOINT_NAME_TO_INDEX.find(jointName);
+			CPPUNIT_ASSERT_MESSAGE("Unable to find " + jointName + " in lookup.", DRCHUBO_JOINT_NAME_TO_INDEX.end() != jointIter);
+			int jointIndex = jointIter->second;
+			CPPUNIT_ASSERT_EQUAL(i, jointIndex);
+		}
+
+		for (const auto& arm : DRCHUBO_ARM_INDEX_TO_NAMES)
+		{
+			int side = arm.first;
+			std::vector<std::string> jointNames = arm.second;
+
+			for (std::string jointName : jointNames)
+			{
+				auto jointIter = DRCHUBO_JOINT_NAME_TO_LIMB.find(jointName);
+				CPPUNIT_ASSERT_MESSAGE("Unable to find " + jointName + " in lookup.", DRCHUBO_JOINT_NAME_TO_LIMB.end() != jointIter);
+				int jointSide = jointIter->second;
+				CPPUNIT_ASSERT_EQUAL(side, jointSide);
+			}
+		}
+	}
+};
+
+CPPUNIT_TEST_SUITE_REGISTRATION(TestJointNames);
+
+//int main(int argc, char **argv)
+//{
+//	::testing::InitGoogleTest(&argc, argv);
+//	return RUN_ALL_TESTS();
+//}

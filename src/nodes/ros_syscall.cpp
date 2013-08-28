@@ -1,18 +1,17 @@
 /**
- *
- * \file joint_trajectory_to_states.cpp
- * \brief
+ * \file ros_syscall.cpp
+ * \brief Simple node that passes command line arguments to a system() call.
  *
  * \author Andrew Price
- * \date Jun 1, 2013
+ * \date July 8, 2013
  *
  * \copyright
+ *
  * Copyright (c) 2013, Georgia Tech Research Corporation
  * All rights reserved.
  *
  * Humanoid Robotics Lab Georgia Institute of Technology
  * Director: Mike Stilman http://www.golems.org
- *
  *
  * This file is provided under the following "BSD-style" License:
  * Redistribution and use in source and binary forms, with or
@@ -39,80 +38,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <ros/ros.h>
-
-#include <hubo_robot_msgs/JointTrajectory.h>
-#include <sensor_msgs/JointState.h>
-
-ros::Publisher m_JointPublisher;
-ros::Subscriber m_TrajSubscriber;
-
-sensor_msgs::JointState currentState;
-
-void trajectoryCallback(hubo_robot_msgs::JointTrajectoryConstPtr jt)
-{
-	ros::Time startTime = ros::Time::now();
-
-	for (int step = 0; step < jt->points.size(); step++)
-	{
-		sensor_msgs::JointState js;
-
-		// Copy names
-		for (int j = 0; j < jt->joint_names.size(); j++)
-		{
-			js.name.push_back(jt->joint_names[j]);
-		}
-
-		// Copy position and velocity data
-		for (int j = 0; j < jt->joint_names.size(); j++)
-		{
-			js.position.push_back(jt->points[step].positions[j]);
-			//js.velocity.push_back(jt->points[step].velocities[j]);
-		}
-
-		// Possibly sleep if the goal is still in the future
-		ros::Time goalTime = startTime + jt->points[step].time_from_start;
-		if (goalTime > ros::Time::now())
-		{
-			(goalTime - ros::Time::now()).sleep();
-
-		}
-
-		js.header.stamp = ros::Time::now();
-
-		// Send the goal as the actual state
-		m_JointPublisher.publish(js);
-
-		currentState = js;
-	}
-
-
-}
-
-void republishState()
-{
-	currentState.header.stamp = ros::Time::now();
-	m_JointPublisher.publish(currentState);
-}
 
 int main(int argc, char** argv)
 {
-	ROS_INFO("Started joint_trajectory_to_states.");
-	ros::init(argc, argv, "joint_trajectory_to_states");
+	ros::init(argc, argv, "ros_syscall");
+	ROS_INFO("Started ros_syscall.");
 
-	ros::NodeHandle m_nh;
-
-	m_TrajSubscriber = m_nh.subscribe("joint_trajectory", 1, &trajectoryCallback);
-	m_JointPublisher = m_nh.advertise<sensor_msgs::JointState>("joint_states", 1);
-
-	ros::Rate r(10);
-	while(ros::ok())
+	if (argc > 1)
 	{
-		republishState();
-		ros::spinOnce();
-		r.sleep();
+		system(argv[1]);
 	}
 
 	return 0;
 }
-

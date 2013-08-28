@@ -43,8 +43,16 @@
 
 namespace hubo_motion_ros
 {
+Eigen::Vector3f toEVector3(const urdf::Vector3 &vector)
+{
+	Eigen::Vector3f newVector;
+	newVector.x() = vector.x;
+	newVector.y() = vector.y;
+	newVector.z() = vector.z;
+	return newVector;
+}
 
-Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose)
+Eigen::Isometry3f toIsometry(geometry_msgs::Pose& pose)
 {
 	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
 	Eigen::Vector3f trans(pose.position.x,pose.position.y,pose.position.z);
@@ -55,7 +63,7 @@ Eigen::Isometry3f toIsometry(geometry_msgs::Pose pose)
 
 	return result;
 }
-Eigen::Isometry3f toIsometry(tf::Transform pose)
+Eigen::Isometry3f toIsometry(tf::Transform& pose)
 {
 	Eigen::Isometry3f result = Eigen::Isometry3f::Identity();
 	tf::Vector3 tVec = pose.getOrigin();
@@ -69,17 +77,45 @@ Eigen::Isometry3f toIsometry(tf::Transform pose)
 	return result;
 }
 
-tf::Transform toTF(geometry_msgs::Pose pose)
+tf::Transform toTF(geometry_msgs::Pose& pose)
 {
 	tf::Transform newTF;
 	tf::poseMsgToTF(pose, newTF);
 	return newTF;
 }
 
-geometry_msgs::Pose toPose(tf::Transform pose)
+geometry_msgs::Point toGMPoint3(const urdf::Vector3 &vector)
+{
+	geometry_msgs::Point newPoint;
+	newPoint.x = vector.x;
+	newPoint.y = vector.y;
+	newPoint.z = vector.z;
+	return newPoint;
+}
+
+geometry_msgs::Quaternion toGMQuaternion(const urdf::Rotation &rotation)
+{
+	geometry_msgs::Quaternion newQuaternion;
+	rotation.getQuaternion(
+				newQuaternion.x,
+				newQuaternion.y,
+				newQuaternion.z,
+				newQuaternion.w);
+	return newQuaternion;
+}
+
+geometry_msgs::Pose toPose(tf::Transform& pose)
 {
 	geometry_msgs::Pose newPose;
 	tf::poseTFToMsg(pose, newPose);
+	return newPose;
+}
+
+geometry_msgs::Pose toPose(const urdf::Pose &pose)
+{
+	geometry_msgs::Pose newPose;
+	newPose.position = toGMPoint3(pose.position);
+	newPose.orientation = toGMQuaternion(pose.rotation);
 	return newPose;
 }
 

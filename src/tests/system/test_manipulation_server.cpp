@@ -1,6 +1,6 @@
 /**
  *
- * \file test_manipulation_forwarder.cpp
+ * \file test_manipulation_server.cpp
  * \brief Subsystem test for verifying operation of the manipulation and control daemons
  *
  * \author Andrew Price
@@ -39,6 +39,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <manip.h>
+
 #include <ros/ros.h>
 
 #include <actionlib/client/simple_action_client.h>
@@ -47,12 +49,59 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include <hubo_robot_msgs/JointTrajectoryAction.h>
+#include <hubo_robot_msgs/PoseTrajectoryAction.h>
+#include <hubo_robot_msgs/HybridTrajectoryAction.h>
+
+#include "hubo_motion_ros/drchubo_joint_names.h"
+#include "hubo_motion_ros/AchROSBridge.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 
-hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
+#define ROS_EXPECT_EQ(expected, actual) \
+	do { \
+	  if (!((expected) == (actual))) { \
+		ROS_FATAL("ASSERTION FAILED\n\tfile = %s\n\tline = %d\n\tcond = %s == %s\n\tmessage = ", __FILE__, __LINE__, #expected, #actual); \
+		ROS_FATAL_STREAM("Expected: " << std::to_string(expected) << ". Actual: " << std::to_string(actual) << "."); \
+		ROS_FATAL("\n"); \
+		ROS_ISSUE_BREAK(); \
+	  } \
+	} while (0)
+
+using namespace hubo_motion_ros;
+
+bool gSpoofDaemon = true;
+volatile bool receivedResult = false;
+
+// Called once when the goal completes
+void jointDoneCB(const actionlib::SimpleClientGoalState& state,
+				 const hubo_robot_msgs::JointTrajectoryResultConstPtr& result)
 {
-	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+	ROS_INFO("Finished in state [%s]", state.toString().c_str());
+	receivedResult = true;
+}
+
+// Called once when the goal becomes active
+void activeCB()
+{
+	ROS_INFO("Goal just went active");
+}
+
+// Called every time feedback is received for the goal
+void jointFeedbackCB(const hubo_robot_msgs::JointTrajectoryFeedbackConstPtr& feedback)
+{
+//	if (!feedback->ErrorState == manip_error_t::MC_NO_ERROR && spoofDaemon)
+//	{
+//	ROS_INFO_STREAM("Got Feedback " <<
+//					"Command: " << (int)feedback->CommandState << ", "<<
+//					"Error: " << (int)feedback->ErrorState << ", "<<
+//					"Grasp: " << (int)feedback->GraspState);
+//	}
+}
+
+ExecutePoseTrajectoryGoal createSimplePoseGoal()
+{
+	ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArrayL, pArrayR;
 	geometry_msgs::Pose pose;
 
@@ -82,9 +131,9 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createSimplePoseGoal()
 	return goal;
 }
 
-hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
+ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 {
-	hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+	ExecutePoseTrajectoryGoal goal;
 	geometry_msgs::PoseArray pArrayL, pArrayR;
 	geometry_msgs::Pose poseA0,poseA1,poseA2,poseB0,poseB1,poseB2;
 
@@ -155,26 +204,44 @@ hubo_motion_ros::ExecutePoseTrajectoryGoal createTrajectoryPoseGoal()
 	return goal;
 }
 
-
-hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
+hubo_robot_msgs::JointTrajectoryGoal createAngleGoal()
 {
-	hubo_motion_ros::ExecuteJointTrajectoryGoal goal;
-	trajectory_msgs::JointTrajectory traj;
-	traj.joint_names.push_back("LSP");
-	traj.joint_names.push_back("LSR");
-	traj.joint_names.push_back("LSY");
-	traj.joint_names.push_back("LEB");
-	traj.joint_names.push_back("LWY");
-	traj.joint_names.push_back("LWP");
+	hubo_robot_msgs::JointTrajectoryGoal goal;
+	hubo_robot_msgs::JointTrajectory traj;
+	hubo_robot_msgs::JointTrajectoryPoint point;
 
-	for (int i = 0; i < 200; i++)
+	traj.joint_names.push_back("REP");
+
+	point.positions.push_back(-60.0 * M_PI/180.0);
+	traj.points.push_back(point);
+
+	goal.trajectory = traj;
+
+	return goal;
+}
+
+
+hubo_robot_msgs::JointTrajectoryGoal createCurlGoal()
+{
+	hubo_robot_msgs::JointTrajectoryGoal goal;
+	hubo_robot_msgs::JointTrajectory traj;
+	traj.joint_names.push_back("RSP");
+	traj.joint_names.push_back("RSR");
+	traj.joint_names.push_back("RSY");
+	traj.joint_names.push_back("REP");
+	traj.joint_names.push_back("RWY");
+	traj.joint_names.push_back("RWP");
+	traj.joint_names.push_back("RWR");
+
+	int numSteps = 50;
+	for (int i = 0; i < numSteps; i++)
 	{
-		trajectory_msgs::JointTrajectoryPoint point;
+		hubo_robot_msgs::JointTrajectoryPoint point;
 		for (size_t j = 0; j < traj.joint_names.size(); j++)
 		{
-			if (traj.joint_names[j] == "LEB")
+			if (traj.joint_names[j] == "REP")
 			{
-				point.positions.push_back(i/2.0 * M_PI/180);
+				point.positions.push_back(-(double)i/((double)numSteps) * M_PI * 1.0/2.0);
 				point.velocities.push_back(0);
 				point.accelerations.push_back(0);
 			}
@@ -188,17 +255,16 @@ hubo_motion_ros::ExecuteJointTrajectoryGoal createCurlGoal()
 		traj.points.push_back(point);
 	}
 
-	//goal.ArmIndex.push_back(0);
-	goal.JointTargets = traj;
+	goal.trajectory = traj;
 
 	return goal;
 }
 
-bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
+bool testJointClient(hubo_robot_msgs::JointTrajectoryGoal goal)
 {
 	// create the action client
 	// true causes the client to spin its own thread
-	actionlib::SimpleActionClient<hubo_motion_ros::ExecuteJointTrajectoryAction> ac("manip_traj_forwarder_joint", true);
+	actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo/motion/hubo_trajectory_server_joint", true);
 
 	ROS_INFO("Waiting for action server to start.");
 	// wait for the action server to start
@@ -207,7 +273,70 @@ bool testJointClient(hubo_motion_ros::ExecuteJointTrajectoryGoal goal)
 	ROS_INFO("Action server started, sending goal.");
 
 	// send a goal to the action
-	ac.sendGoal(goal);
+	ac.sendGoal(goal, &jointDoneCB, &activeCB, &jointFeedbackCB);
+
+	if (gSpoofDaemon)
+	{
+	// Check Ach data here
+	hubo_motion_ros::AchROSBridge<hubo_manip_cmd> cmdChannel(CHAN_HUBO_MANIP_CMD);
+	hubo_motion_ros::AchROSBridge<hubo_manip_state> stateChannel(CHAN_HUBO_MANIP_STATE);
+	hubo_manip_cmd_t cmdActual;
+	hubo_manip_state_t stateSimulated;
+	memset(&stateSimulated, 0, sizeof(stateSimulated));
+
+	// Read the command from the channel
+	while(!receivedResult && ros::ok())
+	{
+		cmdActual = cmdChannel.waitState(1000);
+		int32_t step = cmdActual.goalID[0] - 1;
+		ROS_ASSERT(step >= 0);
+
+		ROS_INFO_STREAM("\n" << cmdActual);
+
+		// Verify command parameters
+		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+		{
+			ROS_EXPECT_EQ(manip_mode_t::MC_ANGLES, cmdActual.m_mode[armIdx]);
+			ROS_EXPECT_EQ(manip_ctrl_t::MC_NONE, cmdActual.m_ctrl[armIdx]);
+			ROS_EXPECT_EQ(manip_grasp_t::MC_GRASP_LIMP, cmdActual.m_grasp[armIdx]);
+			ROS_EXPECT_EQ(true, cmdActual.interrupt[armIdx]);
+		}
+
+		// Verify joint settings
+		if (goal.trajectory.points[0].time_from_start == ros::Duration(0))
+		{
+			for (size_t joint = 0; joint < goal.trajectory.joint_names.size(); joint++)
+			{
+				std::string jointName = goal.trajectory.joint_names[joint];
+				unsigned arm = DRCHUBO_JOINT_NAME_TO_LIMB.at(jointName);
+				unsigned pos = DRCHUBO_JOINT_NAME_TO_LIMB_POSITION.at(jointName);
+				if (cmdActual.arm_angles[arm][pos] != 0.0)
+					ROS_INFO_STREAM(jointName << " : " << cmdActual.arm_angles[arm][pos]);
+				ROS_EXPECT_EQ(goal.trajectory.points[step].positions[joint], cmdActual.arm_angles[arm][pos]);
+			}
+		}
+		else
+		{
+
+		}
+
+		if (gSpoofDaemon)
+		{
+			// Send feedback state
+			for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+			{
+				stateSimulated.goalID[armIdx] = cmdActual.goalID[armIdx];
+				stateSimulated.error[armIdx] = manip_error_t::MC_NO_ERROR;
+				stateSimulated.mode_state[armIdx] = manip_mode_t::MC_READY;
+			}
+
+			stateChannel.pushState(stateSimulated);
+		}
+
+		// TODO:Verify correct feedback
+	}
+	}
+
 
 	//wait for the action to return
 	bool finished_before_timeout = ac.waitForResult(ros::Duration(30.0));
@@ -240,6 +369,8 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 		// send a goal to the action
 		ac.sendGoal(goal);
 
+		// TODO: Check Ach data here
+
 		//wait for the action to return
 		bool finished_before_timeout = ac.waitForResult(ros::Duration(15.0));
 
@@ -258,18 +389,24 @@ bool testPoseClient(hubo_motion_ros::ExecutePoseTrajectoryGoal goal)
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "test_manipulation_forwarder");
-	ROS_INFO("Started test_manipulation_forwarder.");
+	ros::init(argc, argv, "test_manipulation_server");
+	ROS_INFO("Started test_manipulation_server.");
 	ros::NodeHandle nh;
+
+	nh.param<bool>("spoof_daemon", gSpoofDaemon, true);
+
 	ros::Publisher m_posePublisher = nh.advertise<geometry_msgs::PoseArray>("/hubo/pose_targets", 1);
 
 	hubo_motion_ros::ExecutePoseTrajectoryGoal goal = createTrajectoryPoseGoal();
 	m_posePublisher.publish(goal.PoseTargets[0]);
-	testPoseClient(goal);
-	//testJointClient(createCurlGoal());
+
+	//testPoseClient(goal);
+	//testJointClient(createAngleGoal());
+	testJointClient(createCurlGoal());
 
 	//ros::spin();
 
+	ros::shutdown();
 	return 0;
 }
 

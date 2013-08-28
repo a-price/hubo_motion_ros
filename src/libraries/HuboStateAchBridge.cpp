@@ -32,7 +32,7 @@ sensor_msgs::JointState HuboStateAchBridge::getJointState(bool update)
 	{
 		js.position.push_back(((hubo_state)mAchData).joint[i].pos);
 		js.velocity.push_back(((hubo_state)mAchData).joint[i].vel);
-		js.name.push_back(HUBO_URDF_JOINT_NAMES[i]);
+		js.name.push_back(DRCHUBO_URDF_JOINT_NAMES[i]);
 	}
 
 	// How is hubo time specified?

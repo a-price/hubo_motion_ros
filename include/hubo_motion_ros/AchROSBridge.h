@@ -73,7 +73,7 @@ public:
 
 	ach_status_t cancelRequest()
 	{
-        ach_status_t r = ACH_OK;
+		ach_status_t r = ACH_OK;
 
 //		ach_cancel_attr_t cancel_attrs;
 //		ach_cancel_attr_init(&cancel_attrs);
@@ -108,13 +108,16 @@ public:
 	virtual ach_status_t updateState();
 
 	/// Waits for new data from the ach channel
-	virtual const DataClass&  waitState(const uint32_t millis);
+	virtual const DataClass&  waitState(const uint32_t millis, ach_status_t *result = NULL, const bool showWarnings = true);
 
 	/// Returns the data with an option to update first
 	virtual const DataClass& getState(bool update = true);
 
 	/// Cancels any put or get commands to the channel.
 	virtual ach_status_t cancelRequest();
+
+	/// Flushes current channel (i.e. moves pointer to head)
+	virtual ach_status_t flush();
 
 protected:
 //	ach_channel_t mAchChan;
@@ -141,9 +144,13 @@ AchROSBridge<DataClass>::AchROSBridge(std::string chanName)
 
 	if (ACH_ENOENT == r)
 	{
+		// Attempt to create the channel, but warn the user
 		r = ach_create(mAchChannel.mAchChanName.c_str(), 10, sizeof(mAchData), NULL);
 		ROS_WARN("Creating new Ach channel '%s'. The recommended procedure is to create any necessary channels before running the program.",
 			mAchChannel.mAchChanName.c_str());
+
+		// Try to open the channel again
+		r = ach_open( &mAchChannel.mAchChan, mAchChannel.mAchChanName.c_str(), NULL );
 	}
 
 	if( ACH_OK != r )
@@ -216,7 +223,7 @@ ach_status_t AchROSBridge<DataClass>::updateState()
 }
 
 template <class DataClass>
-const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
+const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis, ach_status_t* result, const bool showWarnings)
 {
 	ROS_DEBUG("Waiting for ach channel %s.", mAchChannel.mAchChanName.c_str());
 	ach_status_t r = ACH_OK;
@@ -243,8 +250,9 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 
 	if (ACH_TIMEOUT == r)
 	{
-		ROS_INFO("Ach request timed out on channel '%s'.",
-			mAchChannel.mAchChanName.c_str());
+		// Note: this order of if's is important so that we avoid printing timeout errors when show warnings is false.
+		if (showWarnings)
+			ROS_INFO("Ach request timed out on channel '%s'.",	mAchChannel.mAchChanName.c_str());
 	}
 	else if (ACH_MISSED_FRAME == r)
 	{
@@ -256,11 +264,17 @@ const DataClass& AchROSBridge<DataClass>::waitState(const uint32_t millis)
 		ROS_ERROR("Problem reading Ach channel '%s', error: (%d) %s",
 			mAchChannel.mAchChanName.c_str(), r, ach_result_to_string((ach_status_t)r));
 	}
-    else
-    {
-    	ROS_DEBUG("New ach data on channel '%s'.",
-            mAchChannel.mAchChanName.c_str());
-    }
+	else
+	{
+		ROS_DEBUG("New ach data on channel '%s'.",
+			mAchChannel.mAchChanName.c_str());
+	}
+
+	if (result)
+	{
+		*result = r;
+	}
+
 	return mAchData;
 }
 
@@ -281,6 +295,15 @@ ach_status_t AchROSBridge<DataClass>::cancelRequest()
 {
 	ach_status_t r = ACH_OK;
 	r = mAchChannel.cancelRequest();
+
+	return r;
+}
+
+template <class DataClass>
+ach_status_t AchROSBridge<DataClass>::flush()
+{
+	ach_status_t r = ACH_OK;
+	r = ach_flush(&mAchChannel.mAchChan);
 
 	return r;
 }

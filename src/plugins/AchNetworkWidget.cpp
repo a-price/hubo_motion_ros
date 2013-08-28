@@ -182,13 +182,15 @@ int AchNetworkWidget::getIPAddress(int index)
     switch(index)
     {
     case 0:
-        return ipAddrA; break;
+        return ipAddrA;
     case 1:
-        return ipAddrB; break;
+        return ipAddrB;
     case 2:
-        return ipAddrC; break;
+        return ipAddrC;
     case 3:
-        return ipAddrD; break;
+        return ipAddrD;
+    default:
+    	return 0;
     }
 }
 

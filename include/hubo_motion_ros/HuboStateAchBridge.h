@@ -18,7 +18,7 @@
 #include <sensor_msgs/Imu.h>
 
 #include "hubo_motion_ros/AchROSBridge.h"
-#include "hubo_motion_ros/hubo_joint_names.h"
+#include "hubo_motion_ros/drchubo_joint_names.h"
 
 #define COM_IMU_INDEX 0
 
