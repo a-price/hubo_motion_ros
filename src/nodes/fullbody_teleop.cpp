@@ -138,6 +138,8 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	}
 	else
 	{
+		planState.header.frame_id = "/Body_TSY";
+		planState.header.stamp = ros::Time::now();
 		gStatePublisher.publish(planState);
 	}
 
@@ -386,7 +388,9 @@ void makeSaveButton()
 }
 
 void timerCallback(const ros::TimerEvent&)
-{
+{	
+	planState.header.frame_id = "/Body_TSY";
+	planState.header.stamp = ros::Time::now();
 	gStatePublisher.publish(planState);
 	gRPosePublisher.publish(joyInt.currentPose);
 }
