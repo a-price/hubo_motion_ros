@@ -70,6 +70,9 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 	linkage("Body_RHY").name("RightLeg");
 	linkage("Body_LHY").name("LeftLeg");
 
+    joint("LEP").max(0);
+    joint("REP").max(0);
+
     RobotKin::TRANSFORM toolTf = RobotKin::TRANSFORM::Identity();
     toolTf.translate(joint("RWR_dummy").respectToFixed().translation());
     linkage("RightArm").tool().respectToFixed(toolTf);
@@ -79,26 +82,28 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 
 	std::cerr << this->joints().size() << " joints loaded." << std::endl;
 
+    Eigen::VectorXd armRestValues(7);
+    armRestValues << 0, 0, 0, -30*M_PI/180, 0, 0, 0;
+
+    armConstraints.performNullSpaceTask = false;
+    armConstraints.maxAttempts = 3;
+    armConstraints.maxIterations = 100;
+    armConstraints.wrapToJointLimits = false;
+    armConstraints.wrapSolutionToJointLimits = false;
+    armConstraints.restingValues(armRestValues);
+
+
+
 }
 
 RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Isometry3d B)
 {
 	Eigen::VectorXd xq(q);
-	RobotKin::rk_result_t result;
-    RobotKin::Constraints constraint;
+    RobotKin::rk_result_t result;
 //    constraint.wrapSolutionToJointLimits = false;
 //    constraint.wrapToJointLimits = false;
 //    imposeLimits = false;
-    Eigen::VectorXd restValues(7); restValues.setZero();
-    restValues[0] = -30*M_PI/180;
-    restValues[1] = 0;
-    restValues[2] = 0;
-    restValues[3] = -30*M_PI/180;
-    restValues[4] = 0;
-    restValues[5] = 0;
-    restValues[6] = 0;
 
-    constraint.restingValues(restValues);
 
 	std::string armName;
 	if(side==LEFT)
@@ -106,7 +111,7 @@ RobotKin::rk_result_t DrcHuboKin::armIK(int side, ArmVector &q, const Eigen::Iso
 	else
 		armName = "RightArm";
 
-    result = dampedLeastSquaresIK_linkage(armName, xq, B, constraint);
+    result = dampedLeastSquaresIK_linkage(armName, xq, B, armConstraints);
 //    result = dampedLeastSquaresIK_linkage(armName, xq, B);
 
 	for (int i = 0; i < xq.size(); i++)

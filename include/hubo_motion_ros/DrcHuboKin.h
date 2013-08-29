@@ -80,6 +80,8 @@ public:
 	 */
 	RobotKin::rk_result_t armIK(int side, ArmVector &q, const Eigen::Isometry3d B);
 
+    RobotKin::Constraints armConstraints;
+
 };
 
 #endif // DRCHUBOKIN_H

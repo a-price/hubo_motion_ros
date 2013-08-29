@@ -92,6 +92,9 @@ teleop_params_t params;
 
 void joyCallback(const sensor_msgs::JoyPtr joy)
 {
+    size_t fs;
+    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
+
 	if (mouseInUse)
 	{ return; }
 	bool allZeros = true;
@@ -111,7 +114,13 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
 		// Call IK to get the joint states
 		moveit_msgs::GetPositionIKRequest req;
-		req.ik_request.group_name = "right_arm";
+
+        if(params.arm == T_RIGHT)
+            req.ik_request.group_name = "right_arm";
+        else if(params.arm==T_LEFT)
+            req.ik_request.group_name = "left_arm";
+
+
 		req.ik_request.pose_stamped = joyInt.currentPose;
 		req.ik_request.robot_state.joint_state = planState;
 
@@ -119,7 +128,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 		gIKinClient.call(req, resp);
 
 		// Check for valid solution and update the full plan
-		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+//		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
 		{
 			// Assign all of the new solution joints while preserving the existing ones
 			for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
@@ -171,8 +180,12 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //			}
 //			goal.trajectory.points.push_back(tPoint);
 
-            goal.ArmIndex.push_back(RIGHT); // TODO
+            if(params.arm == T_RIGHT)
+                goal.ArmIndex.push_back(RIGHT);
+            else if(params.arm == T_LEFT)
+                goal.ArmIndex.push_back(LEFT);
             geometry_msgs::PoseArray kittens;
+            kittens.header.frame_id = "/Body_RAP";
             kittens.poses.push_back(joyInt.currentPose.pose);
             goal.PoseTargets.push_back(kittens);
 
@@ -180,7 +193,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
             actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
 			ac.waitForServer();
-			ac.sendGoal(goal);
+            ac.sendGoal(goal);
 			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 		}
 
@@ -208,6 +221,9 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
 void buttonCallback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
+    size_t fs;
+    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
+
 	switch ( feedback->event_type )
 	{
 	case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
@@ -247,6 +263,9 @@ void buttonCallback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr
 
 void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
+    size_t fs;
+    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
+
   std::ostringstream s;
   s << "Feedback from marker '" << feedback->marker_name << "' "
 	<< " / control '" << feedback->control_name << "'";
@@ -261,7 +280,14 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  // Compute FK for end effectors that have changed
 	  // Call IK to get the joint states
 	  moveit_msgs::GetPositionFKRequest req;
-	  req.fk_link_names.push_back("RightArm");
+
+
+//	  req.fk_link_names.push_back("RightArm");
+      if(params.arm == T_RIGHT)
+          req.fk_link_names.push_back("RightArm");
+      else if(params.arm==T_LEFT)
+          req.fk_link_names.push_back("LeftArm");
+
 	  req.robot_state.joint_state = planState;
 	  req.header.stamp = ros::Time::now();
 
