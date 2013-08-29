@@ -221,24 +221,49 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
 		if (prevJoy.buttons[1] == 0 && joy->buttons[1] != 0)
 		{
-            int side;
-            if(params.arm == T_RIGHT)
-                side = RIGHT;
-//                goal.ArmIndex.push_back(RIGHT);
-            else if(params.arm == T_LEFT)
-                side = LEFT;
+//            int side;
+//            if(params.arm == T_RIGHT)
+//                side = RIGHT;
+////                goal.ArmIndex.push_back(RIGHT);
+//            else if(params.arm == T_LEFT)
+//                side = LEFT;
 
-			control_msgs::GripperCommandGoal goal;
-			if (gripperStateClosed)
-			{
-//				goal.command.position = -1.0;
-                cmd.m_grasp[side] = MC_RELEASE_NOW;
-			}
-			else
-            {
-//				goal.command.position = 1.0;
-                cmd.m_grasp[side] = MC_GRASP_NOW;
-			}
+//			control_msgs::GripperCommandGoal goal;
+//			if (gripperStateClosed)
+//			{
+////				goal.command.position = -1.0;
+//                cmd.m_grasp[side] = MC_RELEASE_NOW;
+//                gripperStateClosed = false;
+//			}
+//			else
+//            {
+////				goal.command.position = 1.0;
+//                cmd.m_grasp[side] = MC_GRASP_NOW;
+//                gripperStateClosed = true;
+//			}
+
+            if(params.leftFin == T_LOOSEN)
+                cmd.m_grasp[LEFT] = MC_GRASP_LIMP;
+            else if(params.leftFin == T_GRASP)
+                cmd.m_grasp[LEFT] = MC_GRASP_NOW;
+            else if(params.leftFin == T_OPEN)
+                cmd.m_grasp[LEFT] = MC_RELEASE_NOW;
+
+
+            if(params.rightFin == T_LOOSEN)
+                cmd.m_grasp[RIGHT] = MC_GRASP_LIMP;
+            else if(params.rightFin == T_GRASP)
+                cmd.m_grasp[RIGHT] = MC_GRASP_NOW;
+            else if(params.rightFin == T_OPEN)
+                cmd.m_grasp[RIGHT] = MC_RELEASE_NOW;
+
+            if(params.trigFin == T_LOOSEN)
+                cmd.trigger = MC_GRASP_LIMP;
+            else if(params.trigFin == T_GRASP)
+                cmd.trigger = MC_GRASP_NOW;
+            else if(params.trigFin == T_OPEN)
+                cmd.trigger = MC_RELEASE_NOW;
+
 
             ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
 

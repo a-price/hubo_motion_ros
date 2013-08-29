@@ -1,7 +1,6 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
 
-#include "DummyParams.h"
 
 namespace hubo_motion_ros
 {
@@ -79,7 +78,6 @@ void HuboMotionPanel::switchLeft(bool active)
 {
     if(active)
     {
-        teleop_params_t param;
         param.arm = T_LEFT;
         ach_put(&teleopParamChan, &param, sizeof(param));
     }
@@ -89,7 +87,6 @@ void HuboMotionPanel::switchRight(bool active)
 {
     if(active)
     {
-        teleop_params_t param;
         param.arm = T_RIGHT;
         ach_put(&teleopParamChan, &param, sizeof(param));
     }
@@ -99,8 +96,91 @@ void HuboMotionPanel::switchBoth(bool active)
 {
     if(active)
     {
-        teleop_params_t param;
         param.arm = T_BOTH;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+
+void HuboMotionPanel::graspL(bool active)
+{
+    if(active)
+    {
+        param.leftFin = T_GRASP;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::openL(bool active)
+{
+    if(active)
+    {
+        param.leftFin = T_OPEN;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::loosenL(bool active)
+{
+    if(active)
+    {
+        param.leftFin = T_LOOSEN;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+
+void HuboMotionPanel::graspR(bool active)
+{
+    if(active)
+    {
+        param.rightFin = T_GRASP;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::openR(bool active)
+{
+    if(active)
+    {
+        param.rightFin = T_OPEN;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::loosenR(bool active)
+{
+    if(active)
+    {
+        param.rightFin = T_LOOSEN;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+
+void HuboMotionPanel::graspT(bool active)
+{
+    if(active)
+    {
+        param.trigFin = T_GRASP;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::openT(bool active)
+{
+    if(active)
+    {
+        param.trigFin = T_OPEN;
+        ach_put(&teleopParamChan, &param, sizeof(param));
+    }
+}
+
+void HuboMotionPanel::loosenT(bool active)
+{
+    if(active)
+    {
+        param.trigFin = T_LOOSEN;
         ach_put(&teleopParamChan, &param, sizeof(param));
     }
 }
@@ -112,6 +192,8 @@ void ManipRelay::openL() { cmd.m_grasp[LEFT] = MC_RELEASE_NOW; }
 void ManipRelay::openR() { cmd.m_grasp[RIGHT] = MC_RELEASE_NOW; }
 void ManipRelay::loosenL() { cmd.m_grasp[LEFT] = MC_GRASP_LIMP; }
 void ManipRelay::loosenR() { cmd.m_grasp[RIGHT] = MC_GRASP_LIMP; }
+
+
 
 
 

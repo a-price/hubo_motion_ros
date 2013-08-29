@@ -50,6 +50,8 @@
 #include <Eigen/Geometry>
 
 
+#include "DummyParams.h"
+
 namespace hubo_motion_ros
 {
 
@@ -155,18 +157,31 @@ public:
     virtual void save( rviz::Config config ) const;
 
 
+
+    teleop_params_t param;
+
 private:
     AchNetworkWidget* achManager;
     QCheckBox* libertyCheck;
     QCheckBox* spacenavCheck;
     QDoubleSpinBox* libertyFreq;
     QVector< QVector<QLineEdit*> > datas;
-    QPushButton* graspLB;
-    QPushButton* graspRB;
-    QPushButton* openLB;
-    QPushButton* openRB;
-    QPushButton* loosenLB;
-    QPushButton* loosenRB;
+    QButtonGroup* graspSelL;
+    QRadioButton* graspLB;
+    QRadioButton* openLB;
+    QRadioButton* loosenLB;
+
+    QButtonGroup* graspSelR;
+    QRadioButton* graspRB;
+    QRadioButton* openRB;
+    QRadioButton* loosenRB;
+
+    QButtonGroup* graspSelT;
+    QRadioButton* graspTB;
+    QRadioButton* openTB;
+    QRadioButton* loosenTB;
+
+
 
     QButtonGroup* sideSel;
     QRadioButton* leftSel;
@@ -182,12 +197,25 @@ signals:
 
 protected Q_SLOTS:
 
+
     void handleLibCheckToggle(bool active);
     void handleNavCheckToggle(bool active);
     void getRefreshData(double data, int i, int j);
     void handleLibQuit();
     void handleNavQuit();
     
+    void graspR(bool active);
+    void graspL(bool active);
+    void graspT(bool active);
+
+    void openR(bool active);
+    void openL(bool active);
+    void openT(bool active);
+
+    void loosenR(bool active);
+    void loosenL(bool active);
+    void loosenT(bool active);
+
     
     void switchLeft(bool active);
     void switchRight(bool active);

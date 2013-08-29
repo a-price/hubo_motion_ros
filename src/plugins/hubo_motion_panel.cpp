@@ -40,12 +40,14 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     libertyCheck->setToolTip("Use the Liberty sensor system for teleoperation");
     connect(libertyCheck, SIGNAL(toggled(bool)), this, SLOT(handleLibCheckToggle(bool)));
     checkLayout->addWidget(libertyCheck, 0, Qt::AlignLeft);
+    libertyCheck->setEnabled(false);
 
     spacenavCheck = new QCheckBox;
     spacenavCheck->setText("Spacenav");
     spacenavCheck->setToolTip("Use a 6-axis spacenav joystick for teleoperation");
     connect(spacenavCheck, SIGNAL(toggled(bool)), this, SLOT(handleNavCheckToggle(bool)));
     checkLayout->addWidget(spacenavCheck, 0, Qt::AlignLeft);
+    spacenavCheck->setEnabled(false);
 
     sideSel = new QButtonGroup;
     sideSel->setExclusive(true);
@@ -70,6 +72,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     bothSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     connect(bothSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchBoth(bool)));
     connect(bothSel, SIGNAL(toggled(bool)), this, SLOT(switchBoth(bool)));
+//    selLayout->addWidget(bothSel);
 
     checkLayout->addLayout(selLayout);
 
@@ -114,42 +117,81 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     }
 
     QHBoxLayout* rightGraspLay = new QHBoxLayout;
-    graspRB = new QPushButton;
+    graspSelR = new QButtonGroup;
+    graspSelR->setExclusive(true);
+    graspRB = new QRadioButton;
     graspRB->setText("Grasp R");
     rightGraspLay->addWidget(graspRB);
-    connect(graspRB, SIGNAL(clicked()), &libertyThread, SLOT(graspR()));
-    connect(graspRB, SIGNAL(clicked()), &spacenavThread, SLOT(graspR()));
-    openRB = new QPushButton;
+    graspSelR->addButton(graspRB);
+    connect(graspRB, SIGNAL(toggled(bool)), this, SLOT(graspR(bool)));
+//    connect(graspRB, SIGNAL(toggled()), &libertyThread, SLOT(graspR()));
+//    connect(graspRB, SIGNAL(toggled()), &spacenavThread, SLOT(graspR()));
+    openRB = new QRadioButton;
     openRB->setText("Open R");
     rightGraspLay->addWidget(openRB);
-    connect(openRB, SIGNAL(clicked()), &libertyThread, SLOT(openR()));
-    connect(openRB, SIGNAL(clicked()), &spacenavThread, SLOT(openR()));
-    loosenRB = new QPushButton;
+    graspSelR->addButton(openRB);
+    connect(openRB, SIGNAL(toggled(bool)), this, SLOT(openR(bool)));
+//    connect(openRB, SIGNAL(toggled()), &libertyThread, SLOT(openR()));
+//    connect(openRB, SIGNAL(toggled()), &spacenavThread, SLOT(openR()));
+    loosenRB = new QRadioButton;
     loosenRB->setText("Loosen R");
     rightGraspLay->addWidget(loosenRB);
-    connect(loosenRB, SIGNAL(clicked()), &libertyThread, SLOT(loosenR()));
-    connect(loosenRB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenR()));
+    graspSelR->addButton(loosenRB);
+    connect(loosenRB, SIGNAL(toggled(bool)), this, SLOT(loosenR(bool)));
+//    connect(loosenRB, SIGNAL(toggled()), &libertyThread, SLOT(loosenR()));
+//    connect(loosenRB, SIGNAL(toggled()), &spacenavThread, SLOT(loosenR()));
 
     dumbLayout->addLayout(rightGraspLay);
 
     QHBoxLayout* leftGraspLay = new QHBoxLayout;
-    graspLB = new QPushButton;
+    graspSelL = new QButtonGroup;
+    graspSelL->setExclusive(true);
+    graspLB = new QRadioButton;
     graspLB->setText("Grasp L");
     leftGraspLay->addWidget(graspLB);
-    connect(graspLB, SIGNAL(clicked()), &libertyThread, SLOT(graspL()));
-    connect(graspLB, SIGNAL(clicked()), &spacenavThread, SLOT(graspL()));
-    openLB = new QPushButton;
+    graspSelL->addButton(graspLB);
+    connect(graspLB, SIGNAL(toggled(bool)), this, SLOT(graspL(bool)));
+//    connect(graspLB, SIGNAL(toggled()), &libertyThread, SLOT(graspL()));
+//    connect(graspLB, SIGNAL(toggled()), &spacenavThread, SLOT(graspL()));
+    openLB = new QRadioButton;
     openLB->setText("Open L");
     leftGraspLay->addWidget(openLB);
-    connect(openLB, SIGNAL(clicked()), &libertyThread, SLOT(openL()));
-    connect(openLB, SIGNAL(clicked()), &spacenavThread, SLOT(openL()));
-    loosenLB = new QPushButton;
+    graspSelL->addButton(openLB);
+    connect(openLB, SIGNAL(toggled(bool)), this, SLOT(openL(bool)));
+//    connect(openLB, SIGNAL(toggled()), &libertyThread, SLOT(openL()));
+//    connect(openLB, SIGNAL(toggled()), &spacenavThread, SLOT(openL()));
+    loosenLB = new QRadioButton;
     loosenLB->setText("Loosen L");
     leftGraspLay->addWidget(loosenLB);
-    connect(loosenLB, SIGNAL(clicked()), &libertyThread, SLOT(loosenL()));
-    connect(loosenLB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenL()));
+    graspSelL->addButton(loosenLB);
+    connect(loosenLB, SIGNAL(toggled(bool)), this, SLOT(loosenL(bool)));
+//    connect(loosenLB, SIGNAL(toggled()), &libertyThread, SLOT(loosenL()));
+//    connect(loosenLB, SIGNAL(toggled()), &spacenavThread, SLOT(loosenL()));
 
     dumbLayout->addLayout(leftGraspLay);
+
+    QHBoxLayout* trigGraspLay = new QHBoxLayout;
+    graspSelT = new QButtonGroup;
+    graspSelT->setExclusive(true);
+    graspTB = new QRadioButton;
+    graspTB->setText("Grasp T");
+    trigGraspLay->addWidget(graspTB);
+    graspSelT->addButton(graspTB);
+    connect(graspTB, SIGNAL(toggled(bool)), this, SLOT(graspT(bool)));
+    openTB = new QRadioButton;
+    openTB->setText("Open T");
+    trigGraspLay->addWidget(openTB);
+    graspSelT->addButton(openTB);
+    connect(openTB, SIGNAL(toggled(bool)), this, SLOT(openT(bool)));
+    loosenTB = new QRadioButton;
+    loosenTB->setText("Loosen T");
+    trigGraspLay->addWidget(loosenTB);
+    graspSelT->addButton(loosenTB);
+    connect(loosenTB, SIGNAL(toggled(bool)), this, SLOT(loosenT(bool)));
+
+    dumbLayout->addLayout(trigGraspLay);
+
+
 
     libertyThread.openChannels();
     libertyThread.openLiberty();
@@ -467,7 +509,13 @@ void LibertyRelay::openLiberty()
 }
 
 
+
+
+
 }
+
+
+
 
 
 

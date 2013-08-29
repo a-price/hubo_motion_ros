@@ -73,11 +73,13 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
     joint("LEP").max(0);
     joint("REP").max(0);
 
-    RobotKin::TRANSFORM toolTf = RobotKin::TRANSFORM::Identity();
-    toolTf.translate(joint("RWR_dummy").respectToFixed().translation());
+//    RobotKin::TRANSFORM toolTf = RobotKin::TRANSFORM::Identity();
+//    toolTf.translate(joint("RWR_dummy").respectToFixed().translation());
+    RobotKin::TRANSFORM toolTf = joint("RWR_dummy").respectToFixed();
     linkage("RightArm").tool().respectToFixed(toolTf);
-    toolTf = RobotKin::TRANSFORM::Identity();
-    toolTf.translate(joint("LWR_dummy").respectToFixed().translation());
+//    toolTf = RobotKin::TRANSFORM::Identity();
+//    toolTf.translate(joint("LWR_dummy").respectToFixed().translation());
+    toolTf = joint("LWR_dummy").respectToFixed();
     linkage("LeftArm").tool().respectToFixed(toolTf);
 
 	std::cerr << this->joints().size() << " joints loaded." << std::endl;
