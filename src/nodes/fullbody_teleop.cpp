@@ -63,6 +63,7 @@
 #include <urdf/model.h>
 
 #include "DummyParams.h"
+#include <manip.h>
 
 ros::Subscriber gJoySubscriber;
 ros::ServiceClient gIKinClient;
@@ -89,6 +90,8 @@ bool gripperStateClosed = true;
 ach_channel_t teleopParamChan;
 teleop_params_t params;
 
+ach_channel_t chan_manip_cmd;
+hubo_manip_cmd_t cmd;
 
 void joyCallback(const sensor_msgs::JoyPtr joy)
 {
@@ -180,38 +183,69 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //			}
 //			goal.trajectory.points.push_back(tPoint);
 
+            int side;
             if(params.arm == T_RIGHT)
-                goal.ArmIndex.push_back(RIGHT);
+                side = RIGHT;
+//                goal.ArmIndex.push_back(RIGHT);
             else if(params.arm == T_LEFT)
-                goal.ArmIndex.push_back(LEFT);
-            geometry_msgs::PoseArray kittens;
-            kittens.header.frame_id = "/Body_RAP";
-            kittens.poses.push_back(joyInt.currentPose.pose);
-            goal.PoseTargets.push_back(kittens);
+                side = LEFT;
+//                goal.ArmIndex.push_back(LEFT);
+
+            cmd.pose[side].x = joyInt.currentPose.pose.position.x;
+            cmd.pose[side].y = joyInt.currentPose.pose.position.y;
+            cmd.pose[side].z = joyInt.currentPose.pose.position.z;
+
+            cmd.pose[side].w = joyInt.currentPose.pose.orientation.w;
+            cmd.pose[side].i = joyInt.currentPose.pose.orientation.x;
+            cmd.pose[side].j = joyInt.currentPose.pose.orientation.y;
+            cmd.pose[side].k = joyInt.currentPose.pose.orientation.z;
+
+            cmd.m_mode[side] = MC_TELEOP;
+            cmd.interrupt[side] = true;
+
+            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
+
+
+//            geometry_msgs::PoseArray kittens;
+//            kittens.header.frame_id = "/Body_RAP";
+//            kittens.poses.push_back(joyInt.currentPose.pose);
+//            goal.PoseTargets.push_back(kittens);
 
 
 //			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
-            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
-			ac.waitForServer();
-            ac.sendGoal(goal);
-			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+//            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
+//			ac.waitForServer();
+//            ac.sendGoal(goal);
+//			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 		}
 
 		if (prevJoy.buttons[1] == 0 && joy->buttons[1] != 0)
 		{
+            int side;
+            if(params.arm == T_RIGHT)
+                side = RIGHT;
+//                goal.ArmIndex.push_back(RIGHT);
+            else if(params.arm == T_LEFT)
+                side = LEFT;
+
 			control_msgs::GripperCommandGoal goal;
 			if (gripperStateClosed)
 			{
-				goal.command.position = -1.0;
+//				goal.command.position = -1.0;
+                cmd.m_grasp[side] = MC_RELEASE_NOW;
 			}
 			else
-			{
-				goal.command.position = 1.0;
+            {
+//				goal.command.position = 1.0;
+                cmd.m_grasp[side] = MC_GRASP_NOW;
 			}
-			actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
-			ac.waitForServer();
-			ac.sendGoal(goal);
-			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+
+            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
+
+//			actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
+//			ac.waitForServer();
+//			ac.sendGoal(goal);
+//			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 		}
 	}
 
@@ -448,6 +482,9 @@ int main(int argc, char** argv)
 
     ach_open(&teleopParamChan, "teleop-param", NULL);
     memset(&params, 0, sizeof(params));
+
+    ach_open(&chan_manip_cmd, CHAN_HUBO_MANIP_CMD, NULL);
+    memset(&cmd, 0, sizeof(cmd));
 
 	ros::NodeHandle nh;
 

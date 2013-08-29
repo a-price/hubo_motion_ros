@@ -1,7 +1,7 @@
 <launch>
 	<param name="/robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
     <param name="/position_speed" value="0.025" />
-    <param name="/use_local_rotations" value="false" />
+    <param name="/use_local_rotations" value="0" />
 
 	<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node" />
 	<node name="fullbody_teleop" pkg="hubo_motion_ros" type="fullbody_teleop" output="screen" >
