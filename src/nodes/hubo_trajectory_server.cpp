@@ -81,7 +81,7 @@ protected:
 
 	ros::NodeHandle nh_;
 	// NodeHandle instance must be created before this line. Otherwise strange error may occur.
-	actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
+    actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
 	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
 	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
 
@@ -146,6 +146,7 @@ public:
 
 	void executeJointCB(const hubo_robot_msgs::JointTrajectoryGoalConstPtr &goal)
 	{
+        ROS_INFO("New joint configuration!");
 		bool preempted = false, error = false, completed = false;
 		bool staleWarning = true, errorWarning = true, channelWarning = true;
 		///////////result_j_.Success = false;
@@ -479,8 +480,8 @@ public:
 	}
 
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
-	{
-		ROS_INFO("New Pose!");
+    {
+        ROS_INFO("Pose command");
 		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
@@ -490,13 +491,14 @@ public:
 
 		ros::Time tOut;
 
+
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
 		cmd.stopNorm = IMMOBILITY_THRESHOLD;
 
-		// Set the initial hand state
+        // Set the initial hand state
 		for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
-		{
+        {
 			// Caution: Remember that armIndex refers to the command's arm index, while
 			//  armIter refers to the goal.
 			size_t armIdx = goal->ArmIndex[armIter];
@@ -504,18 +506,19 @@ public:
 
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
             cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
-			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
-			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
-			ROS_INFO("Hand: %lu", armIdx);
-			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand." : "Opening hand.");
-			cmd.interrupt[armIdx] = true;
-			cmd.goalID[armIdx] = goalCount;
+//			cmd.m_grasp[armIdx] = goal->ClosedStateAtBeginning[armIter] ? manip_grasp_t::MC_GRASP_NOW : manip_grasp_t::MC_RELEASE_NOW;
+//			//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+//			ROS_INFO("Hand: %lu", armIdx);
+//			ROS_INFO(goal->ClosedStateAtBeginning[armIter] ? "Closing hand." : "Opening hand.");
+//			cmd.interrupt[armIdx] = true;
+//			cmd.goalID[armIdx] = goalCount;
 		}
 		// Open or close the hands
 		cmdChannel.pushState(cmd);
 		stateChannel.waitState(250);
 
 		goalCount++;
+
 
 		// Iterate through all poses provided
 		ROS_INFO("%lu steps to complete.", goal->PoseTargets[0].poses.size());
@@ -527,9 +530,10 @@ public:
 			currentPoses.poses.clear();
 			goalCount++;
 
+
 			// Build cmd packet by iterating through all arms provided
 			for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
-			{
+            {
 				size_t armIdx = goal->ArmIndex[armIter];
 				if (armIdx > (size_t)NUM_ARMS) {continue;}
 				armIndices.insert(armIdx);
@@ -538,17 +542,17 @@ public:
                 cmd.m_mode[armIdx] = manip_mode_t::MC_TELEOP;
                 cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 				cmd.interrupt[armIdx] = true;
-				cmd.goalID[armIdx] = goalCount;
-				if (goal->PoseTargets[0].poses.size()-1 == poseIter)
-				{
-					cmd.m_grasp[armIdx] = goal->ClosedStateAtEnd[armIter] ? manip_grasp_t::MC_GRASP_AT_END : manip_grasp_t::MC_RELEASE_AT_END;
-					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
-				}
-				else
-				{
-					cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_STATIC;
-					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
-				}
+                cmd.goalID[armIdx] = goalCount;
+//				if (goal->PoseTargets[0].poses.size()-1 == poseIter)
+//				{
+//					cmd.m_grasp[armIdx] = goal->ClosedStateAtEnd[armIter] ? manip_grasp_t::MC_GRASP_AT_END : manip_grasp_t::MC_RELEASE_AT_END;
+//					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+//				}
+//				else
+//				{
+//					cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_STATIC;
+//					//cmd.m_grasp[armIdx] = manip_grasp_t::MC_RELEASE_NOW;
+//				}
 
 				hubo_manip_pose_t pose;
 				const geometry_msgs::Pose goalPose = goal->PoseTargets[armIter].poses[poseIter];
@@ -562,7 +566,7 @@ public:
 
 				cmd.pose[armIdx] = pose;
 
-				currentPoses.poses.push_back(goalPose);
+                currentPoses.poses.push_back(goalPose);
 			}
 
 			// Publish the target hand positions for debugging purposes
@@ -573,7 +577,7 @@ public:
 
 			// NB: the feedback publishing must be nested here, since the protocol only defines one pose at a time.
 			// write to channel
-			cmdChannel.pushState(cmd);
+            cmdChannel.pushState(cmd);
 
 			// wait for completion, with preemption
 			hubo_manip_state_t state;

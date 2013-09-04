@@ -172,51 +172,55 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 		{
 
 
+//            hubo_robot_msgs::JointTrajectoryGoal goal;
+//            hubo_robot_msgs::JointTrajectoryPoint tPoint;
+//            for (int i = 0; i < planState.name.size(); i++)
+//            {
+//                goal.trajectory.joint_names.push_back(planState.name[i]);
+//                tPoint.positions.push_back(planState.position[i]);
+//            }
+//            goal.trajectory.points.push_back(tPoint);
+//            actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
 
-//			hubo_robot_msgs::JointTrajectoryGoal goal;
-//			hubo_robot_msgs::JointTrajectoryPoint tPoint;
+
             hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
-//			for (int i = 0; i < planState.name.size(); i++)
-//			{
-//				goal.trajectory.joint_names.push_back(planState.name[i]);
-//				tPoint.positions.push_back(planState.position[i]);
-//			}
-//			goal.trajectory.points.push_back(tPoint);
-
-            int side;
-            if(params.arm == T_RIGHT)
-                side = RIGHT;
-//                goal.ArmIndex.push_back(RIGHT);
-            else if(params.arm == T_LEFT)
-                side = LEFT;
-//                goal.ArmIndex.push_back(LEFT);
-
-            cmd.pose[side].x = joyInt.currentPose.pose.position.x;
-            cmd.pose[side].y = joyInt.currentPose.pose.position.y;
-            cmd.pose[side].z = joyInt.currentPose.pose.position.z;
-
-            cmd.pose[side].w = joyInt.currentPose.pose.orientation.w;
-            cmd.pose[side].i = joyInt.currentPose.pose.orientation.x;
-            cmd.pose[side].j = joyInt.currentPose.pose.orientation.y;
-            cmd.pose[side].k = joyInt.currentPose.pose.orientation.z;
-
-            cmd.m_mode[side] = MC_TELEOP;
-            cmd.interrupt[side] = true;
-
-            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
-
-
-//            geometry_msgs::PoseArray kittens;
+            geometry_msgs::PoseArray kittens;
 //            kittens.header.frame_id = "/Body_RAP";
-//            kittens.poses.push_back(joyInt.currentPose.pose);
-//            goal.PoseTargets.push_back(kittens);
+            kittens.header.frame_id = "/world";
+            kittens.poses.push_back(joyInt.currentPose.pose);
+
+            goal.PoseTargets.push_back(kittens);
+            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
+            if(params.arm == T_RIGHT)
+                goal.ArmIndex.push_back(RIGHT);
+            else if(params.arm == T_LEFT)
+                goal.ArmIndex.push_back(LEFT);
 
 
-//			actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
-//            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
-//			ac.waitForServer();
-//            ac.sendGoal(goal);
-//			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+            ac.waitForServer();
+            ac.sendGoal(goal);
+            bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+
+
+//            int side;
+//            if(params.arm == T_RIGHT)
+//                side = RIGHT;
+//            else if(params.arm == T_LEFT)
+//                side = LEFT;
+
+//            cmd.pose[side].x = joyInt.currentPose.pose.position.x;
+//            cmd.pose[side].y = joyInt.currentPose.pose.position.y;
+//            cmd.pose[side].z = joyInt.currentPose.pose.position.z;
+
+//            cmd.pose[side].w = joyInt.currentPose.pose.orientation.w;
+//            cmd.pose[side].i = joyInt.currentPose.pose.orientation.x;
+//            cmd.pose[side].j = joyInt.currentPose.pose.orientation.y;
+//            cmd.pose[side].k = joyInt.currentPose.pose.orientation.z;
+
+//            cmd.m_mode[side] = MC_TELEOP;
+//            cmd.interrupt[side] = true;
+
+//            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
 		}
 
 		if (prevJoy.buttons[1] == 0 && joy->buttons[1] != 0)
@@ -355,8 +359,13 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 
 	  std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
 
+
 	  if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
 	  {
+          joyInt.currentOrientation.w() = resp.pose_stamped[0].pose.orientation.w;
+          joyInt.currentOrientation.x() = resp.pose_stamped[0].pose.orientation.x;
+          joyInt.currentOrientation.y() = resp.pose_stamped[0].pose.orientation.y;
+          joyInt.currentOrientation.z() = resp.pose_stamped[0].pose.orientation.z;
 		  joyInt.currentPose = resp.pose_stamped[0];
 	  }
 	  else
