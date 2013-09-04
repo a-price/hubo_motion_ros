@@ -1,5 +1,8 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
+#include <control_msgs/GripperCommandAction.h>
+
+#include <actionlib/client/simple_action_client.h>
 
 
 namespace hubo_motion_ros
@@ -102,87 +105,95 @@ void HuboMotionPanel::switchBoth(bool active)
 }
 
 
-void HuboMotionPanel::graspL(bool active)
+void HuboMotionPanel::graspL()
 {
-    if(active)
-    {
-        param.leftFin = T_GRASP;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.leftFin = T_GRASP;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
+
 }
 
-void HuboMotionPanel::openL(bool active)
+void HuboMotionPanel::openL()
 {
-    if(active)
-    {
-        param.leftFin = T_OPEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.leftFin = T_OPEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
 }
 
-void HuboMotionPanel::loosenL(bool active)
+void HuboMotionPanel::loosenL()
 {
-    if(active)
-    {
-        param.leftFin = T_LOOSEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
-}
-
-
-void HuboMotionPanel::graspR(bool active)
-{
-    if(active)
-    {
-        param.rightFin = T_GRASP;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
-}
-
-void HuboMotionPanel::openR(bool active)
-{
-    if(active)
-    {
-        param.rightFin = T_OPEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
-}
-
-void HuboMotionPanel::loosenR(bool active)
-{
-    if(active)
-    {
-        param.rightFin = T_LOOSEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.leftFin = T_LOOSEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
 }
 
 
-void HuboMotionPanel::graspT(bool active)
+void HuboMotionPanel::graspR()
 {
-    if(active)
-    {
-        param.trigFin = T_GRASP;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.rightFin = T_GRASP;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
 }
 
-void HuboMotionPanel::openT(bool active)
+void HuboMotionPanel::openR()
 {
-    if(active)
-    {
-        param.trigFin = T_OPEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.rightFin = T_OPEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
 }
 
-void HuboMotionPanel::loosenT(bool active)
+void HuboMotionPanel::loosenR()
 {
-    if(active)
-    {
-        param.trigFin = T_LOOSEN;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+//        param.rightFin = T_LOOSEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
+}
+
+
+void HuboMotionPanel::graspT()
+{
+//    if(active)
+//    {
+//        param.trigFin = T_GRASP;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
+}
+
+void HuboMotionPanel::openT()
+{
+//    if(active)
+//    {
+//        param.trigFin = T_OPEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
+}
+
+void HuboMotionPanel::loosenT()
+{
+    control_msgs::GripperCommandGoal goal;
+    goal.command.position = 0.0;
+
+    actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
+    ac.waitForServer();
+    ac.sendGoal(goal);
+
+//    if(active)
+//    {
+//        param.trigFin = T_LOOSEN;
+//        ach_put(&teleopParamChan, &param, sizeof(param));
+//    }
 }
 
 

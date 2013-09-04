@@ -146,8 +146,8 @@ class HuboMotionPanel : public rviz::Panel
 public:
     HuboMotionPanel(QWidget *parent = 0);
     ~HuboMotionPanel();
-    
-    
+
+
     ach_channel_t teleopParamChan;
 
     LibertyRelay libertyThread;
@@ -167,19 +167,19 @@ private:
     QDoubleSpinBox* libertyFreq;
     QVector< QVector<QLineEdit*> > datas;
     QButtonGroup* graspSelL;
-    QRadioButton* graspLB;
-    QRadioButton* openLB;
-    QRadioButton* loosenLB;
+    QPushButton* graspLB;
+    QPushButton* openLB;
+    QPushButton* loosenLB;
 
     QButtonGroup* graspSelR;
-    QRadioButton* graspRB;
-    QRadioButton* openRB;
-    QRadioButton* loosenRB;
+    QPushButton* graspRB;
+    QPushButton* openRB;
+    QPushButton* loosenRB;
 
     QButtonGroup* graspSelT;
-    QRadioButton* graspTB;
-    QRadioButton* openTB;
-    QRadioButton* loosenTB;
+    QPushButton* graspTB;
+    QPushButton* openTB;
+    QPushButton* loosenTB;
 
 
 
@@ -203,20 +203,32 @@ protected Q_SLOTS:
     void getRefreshData(double data, int i, int j);
     void handleLibQuit();
     void handleNavQuit();
-    
-    void graspR(bool active);
-    void graspL(bool active);
-    void graspT(bool active);
 
-    void openR(bool active);
-    void openL(bool active);
-    void openT(bool active);
+//    void graspR(bool active);
+//    void graspL(bool active);
+//    void graspT(bool active);
 
-    void loosenR(bool active);
-    void loosenL(bool active);
-    void loosenT(bool active);
+//    void openR(bool active);
+//    void openL(bool active);
+//    void openT(bool active);
 
-    
+//    void loosenR(bool active);
+//    void loosenL(bool active);
+//    void loosenT(bool active);
+
+    void graspR();
+    void graspL();
+    void graspT();
+
+    void openR();
+    void openL();
+    void openT();
+
+    void loosenR();
+    void loosenL();
+    void loosenT();
+
+
     void switchLeft(bool active);
     void switchRight(bool active);
     void switchBoth(bool active);

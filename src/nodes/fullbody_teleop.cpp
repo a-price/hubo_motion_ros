@@ -185,8 +185,8 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
             hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
             geometry_msgs::PoseArray kittens;
-//            kittens.header.frame_id = "/Body_RAP";
-            kittens.header.frame_id = "/world";
+            kittens.header.frame_id = "/Body_RAP";
+//            kittens.header.frame_id = "/world";
             kittens.poses.push_back(joyInt.currentPose.pose);
 
             goal.PoseTargets.push_back(kittens);
@@ -271,7 +271,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
             ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
 
-//			actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
+            actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
 //			ac.waitForServer();
 //			ac.sendGoal(goal);
 //			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
@@ -400,7 +400,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  }
 
 	  // Trim angle to joint limits
-	  if (angle > targetJoint->limits->upper)
+      if (angle > targetJoint->limits->upper)
 	  {
 		  angle = targetJoint->limits->upper;
 	  }
