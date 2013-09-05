@@ -157,6 +157,7 @@ public:
     virtual void save( rviz::Config config ) const;
 
 
+    QString selectedStyle;
 
     teleop_params_t param;
 

@@ -1,6 +1,7 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
-#include <control_msgs/GripperCommandAction.h>
+#include "hubo_motion_ros/ExecuteGripperAction.h"
+//#include <control_msgs/GripperCommandAction.h>
 
 #include <actionlib/client/simple_action_client.h>
 
@@ -105,8 +106,27 @@ void HuboMotionPanel::switchBoth(bool active)
 }
 
 
+
 void HuboMotionPanel::graspL()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenLB->setStyleSheet("");
+        openLB->setStyleSheet("");
+        graspLB->setStyleSheet(selectedStyle);
+    }
+
+
+
 //    if(active)
 //    {
 //        param.leftFin = T_GRASP;
@@ -117,6 +137,24 @@ void HuboMotionPanel::graspL()
 
 void HuboMotionPanel::openL()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_RELEASE_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenLB->setStyleSheet("");
+        openLB->setStyleSheet(selectedStyle);
+        graspLB->setStyleSheet("");
+    }
+
+
+
 //    if(active)
 //    {
 //        param.leftFin = T_OPEN;
@@ -126,6 +164,23 @@ void HuboMotionPanel::openL()
 
 void HuboMotionPanel::loosenL()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_LIMP);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenLB->setStyleSheet(selectedStyle);
+        openLB->setStyleSheet("");
+        graspLB->setStyleSheet("");
+    }
+
+
 //    if(active)
 //    {
 //        param.leftFin = T_LOOSEN;
@@ -136,6 +191,23 @@ void HuboMotionPanel::loosenL()
 
 void HuboMotionPanel::graspR()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenRB->setStyleSheet("");
+        openRB->setStyleSheet("");
+        graspRB->setStyleSheet(selectedStyle);
+    }
+
+
 //    if(active)
 //    {
 //        param.rightFin = T_GRASP;
@@ -145,6 +217,23 @@ void HuboMotionPanel::graspR()
 
 void HuboMotionPanel::openR()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_RELEASE_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenRB->setStyleSheet("");
+        openRB->setStyleSheet(selectedStyle);
+        graspRB->setStyleSheet("");
+    }
+
+
 //    if(active)
 //    {
 //        param.rightFin = T_OPEN;
@@ -154,6 +243,23 @@ void HuboMotionPanel::openR()
 
 void HuboMotionPanel::loosenR()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_LIMP);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenRB->setStyleSheet(selectedStyle);
+        openRB->setStyleSheet("");
+        graspRB->setStyleSheet("");
+    }
+
+
 //    if(active)
 //    {
 //        param.rightFin = T_LOOSEN;
@@ -162,8 +268,27 @@ void HuboMotionPanel::loosenR()
 }
 
 
+
 void HuboMotionPanel::graspT()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG);
+
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenTB->setStyleSheet("");
+        openTB->setStyleSheet("");
+        graspTB->setStyleSheet(selectedStyle);
+    }
+
+
 //    if(active)
 //    {
 //        param.trigFin = T_GRASP;
@@ -173,6 +298,23 @@ void HuboMotionPanel::graspT()
 
 void HuboMotionPanel::openT()
 {
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_RELEASE_NOW);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG);
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
+    ac.sendGoal(goal);
+
+    if(response)
+    {
+        loosenTB->setStyleSheet("");
+        openTB->setStyleSheet(selectedStyle);
+        graspTB->setStyleSheet("");
+    }
+
+
 //    if(active)
 //    {
 //        param.trigFin = T_OPEN;
@@ -182,12 +324,26 @@ void HuboMotionPanel::openT()
 
 void HuboMotionPanel::loosenT()
 {
-    control_msgs::GripperCommandGoal goal;
-    goal.command.position = 0.0;
+    hubo_motion_ros::ExecuteGripperGoal goal;
+    goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_LIMP);
+    goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG);
 
-    actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
-    ac.waitForServer();
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+    bool response = ac.waitForServer(ros::Duration(0.1));
+
     ac.sendGoal(goal);
+
+
+    if(response)
+    {
+        loosenTB->setStyleSheet(selectedStyle);
+        openTB->setStyleSheet("");
+        graspTB->setStyleSheet("");
+    }
+
+
+//    control_msgs::GripperCommandGoal goal;
+//    actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
 
 //    if(active)
 //    {

@@ -55,11 +55,12 @@
 #include <hubo_robot_msgs/PoseTrajectoryAction.h>
 #include <hubo_robot_msgs/HybridTrajectoryAction.h>
 
-#include <control_msgs/GripperCommandAction.h>
+//#include <control_msgs/GripperCommandAction.h>
 
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
+#include "hubo_motion_ros/ExecuteGripperAction.h"
 //#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
 
@@ -83,7 +84,8 @@ protected:
 	// NodeHandle instance must be created before this line. Otherwise strange error may occur.
     actionlib::SimpleActionServer<hubo_motion_ros::ExecutePoseTrajectoryAction> asp_;
 	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
-	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
+//	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
+    actionlib::SimpleActionServer<hubo_motion_ros::ExecuteGripperAction> asg_;
 
 	std::string action_name_j_;
 	std::string action_name_p_;
@@ -98,13 +100,15 @@ protected:
 	hubo_robot_msgs::JointTrajectoryFeedback feedback_j_;
 	hubo_robot_msgs::JointTrajectoryResult result_j_;
 
-	control_msgs::GripperCommandResult result_g_;
+//	control_msgs::GripperCommandResult result_g_;
+    hubo_motion_ros::ExecuteGripperResult result_g_;
 
 	AchROSBridge<hubo_manip_state> stateChannel;
 	AchROSBridge<hubo_manip_cmd> cmdChannel;
 	AchROSBridge<hubo_manip_traj> trajChannel;
 	AchROSBridge<hubo_manip_param> paramChannel;
-    
+
+    hubo_manip_cmd_t cmd;
     
     // TODO: Replace with a ROS message
     ach_channel_t teleopParamChan;
@@ -138,6 +142,8 @@ public:
         ach_open(&teleopParamChan, "teleop-param", NULL);
 
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
+
+        memset(&cmd, 0, sizeof(cmd));
 	}
 
 	~HuboManipulationAction(void)
@@ -150,9 +156,7 @@ public:
 		bool preempted = false, error = false, completed = false;
 		bool staleWarning = true, errorWarning = true, channelWarning = true;
 		///////////result_j_.Success = false;
-		ros::Time tOut;
-		hubo_manip_cmd_t cmd;
-		memset(&cmd, 0, sizeof(cmd));
+        ros::Time tOut;
 
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
@@ -485,9 +489,7 @@ public:
 		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
-		///////////result_p_.Success = false;
-		hubo_manip_cmd_t cmd;
-		memset(&cmd, 0, sizeof(cmd));
+        ///////////result_p_.Success = false;
 
 		ros::Time tOut;
 
@@ -646,7 +648,7 @@ public:
 			}
 		}
 
-		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
+//		forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
 
 		// return the result
 		if (error && completed)
@@ -670,44 +672,82 @@ public:
 		{
 			asp_.setAborted(result_p_);
 		}
-		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
+//		forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, false);
 	}
 
-	void executeGripperCB(const control_msgs::GripperCommandGoalConstPtr& goal)
+    void executeGripperCB(const hubo_motion_ros::ExecuteGripperGoalConstPtr &goal)
 	{
-		if (fabs(goal->command.position) <= 0.01)
-		{
-			if (fabs(goal->command.max_effort) <= 0.01)
-			{
-				forceSetGrasps(manip_grasp_t::MC_GRASP_LIMP, true);
-				result_g_.position = 0.0;
-				result_g_.effort = 0.0;
-			}
-			else
-			{
-				forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, true);
-				result_g_.position = 0.0;
-				result_g_.effort = 1.0;
-			}
-		}
-		else if (goal->command.position > 0.01)
-		{
-			std::cerr << "[Manip Server] Setting grasp to close." << std::endl;
-			forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
-			result_g_.position = 1.0;
-			result_g_.effort = 1.0;
-		}
-		else if (goal->command.position < -0.01)
-		{
-			std::cerr << "[Manip Server] Setting grasp to release." << std::endl;
-			forceSetGrasps(manip_grasp_t::MC_RELEASE_NOW, true);
-			result_g_.position = -1.0;
-			result_g_.effort = 1.0;
-		}
 
-		result_g_.reached_goal = true;
-		result_g_.stalled = false;
-		asg_.setSucceeded(result_g_);
+        std::cerr << "GOT A GRIPPER COMMAND" << std::endl;
+//		if (fabs(goal->command.position) <= 0.01)
+//		{
+//			if (fabs(goal->command.max_effort) <= 0.01)
+//			{
+//				forceSetGrasps(manip_grasp_t::MC_GRASP_LIMP, true);
+//				result_g_.position = 0.0;
+//				result_g_.effort = 0.0;
+//			}
+//			else
+//			{
+//				forceSetGrasps(manip_grasp_t::MC_GRASP_STATIC, true);
+//				result_g_.position = 0.0;
+//				result_g_.effort = 1.0;
+//			}
+//		}
+//		else if (goal->command.position > 0.01)
+//		{
+//			std::cerr << "[Manip Server] Setting grasp to close." << std::endl;
+//			forceSetGrasps(manip_grasp_t::MC_GRASP_NOW, true);
+//			result_g_.position = 1.0;
+//			result_g_.effort = 1.0;
+//		}
+//		else if (goal->command.position < -0.01)
+//		{
+//			std::cerr << "[Manip Server] Setting grasp to release." << std::endl;
+//			forceSetGrasps(manip_grasp_t::MC_RELEASE_NOW, true);
+//			result_g_.position = -1.0;
+//			result_g_.effort = 1.0;
+//		}
+
+//		result_g_.reached_goal = true;
+//		result_g_.stalled = false;
+
+//      asg_.setSucceeded(result_g_);
+
+
+        if( goal->grip.size() == goal->ArmIndex.size() )
+        {
+            for(int i=0; i<goal->grip.size(); i++)
+            {
+                manip_grasp_t graspType;
+                if( goal->grip[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_LIMP )
+                    graspType = MC_GRASP_LIMP;
+                else if( goal->grip[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW )
+                    graspType = MC_GRASP_NOW;
+                else if( goal->grip[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_RELEASE_NOW )
+                    graspType = MC_RELEASE_NOW;
+
+                if( goal->ArmIndex[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT )
+                    cmd.m_grasp[LEFT] = graspType;
+                else if( goal->ArmIndex[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT )
+                    cmd.m_grasp[RIGHT] = graspType;
+                else if( goal->ArmIndex[i] == hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG )
+                    cmd.trigger = graspType;
+
+
+                cmdChannel.pushState(cmd);
+            }
+
+            result_g_.Success = true;
+            asg_.setSucceeded(result_g_);
+        }
+        else
+        {
+            ROS_ERROR("Number of grip commands did not match number of arms");
+            result_g_.Success = false;
+            asg_.setSucceeded(result_g_);
+        }
+
 	}
 };
 

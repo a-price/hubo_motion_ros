@@ -7,6 +7,9 @@ namespace hubo_motion_ros
 HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     : rviz::Panel(parent)
 {
+//    int argc=0;
+//    char** argv;
+//    ros::init(argc, argv, "hubo_motion_panel");
 
     achManager = new AchNetworkWidget;
     achManager->setNetworkName("Manipulation");
@@ -33,6 +36,9 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     
     ach_open(&teleopParamChan, "teleop-param", NULL);
 
+    QColor color(100, 230, 100);
+    selectedStyle = "background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #dadbde, stop: 1 "
+            + color.name() + ")";
 
     QHBoxLayout* checkLayout = new QHBoxLayout;
     libertyCheck = new QCheckBox;

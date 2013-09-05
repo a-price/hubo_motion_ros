@@ -45,6 +45,7 @@
 #include <moveit_msgs/GetPositionFK.h>
 #include <moveit_msgs/GetPositionIK.h>
 #include <hubo_robot_msgs/JointTrajectory.h>
+#include <hubo_motion_ros/ExecuteGripperAction.h>
 #include <control_msgs/GripperCommandAction.h>
 
 #include <interactive_markers/interactive_marker_server.h>
@@ -246,35 +247,47 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //                gripperStateClosed = true;
 //			}
 
-            if(params.leftFin == T_LOOSEN)
-                cmd.m_grasp[LEFT] = MC_GRASP_LIMP;
-            else if(params.leftFin == T_GRASP)
-                cmd.m_grasp[LEFT] = MC_GRASP_NOW;
-            else if(params.leftFin == T_OPEN)
-                cmd.m_grasp[LEFT] = MC_RELEASE_NOW;
+//            if(params.leftFin == T_LOOSEN)
+//                cmd.m_grasp[LEFT] = MC_GRASP_LIMP;
+//            else if(params.leftFin == T_GRASP)
+//                cmd.m_grasp[LEFT] = MC_GRASP_NOW;
+//            else if(params.leftFin == T_OPEN)
+//                cmd.m_grasp[LEFT] = MC_RELEASE_NOW;
 
 
-            if(params.rightFin == T_LOOSEN)
-                cmd.m_grasp[RIGHT] = MC_GRASP_LIMP;
-            else if(params.rightFin == T_GRASP)
-                cmd.m_grasp[RIGHT] = MC_GRASP_NOW;
-            else if(params.rightFin == T_OPEN)
-                cmd.m_grasp[RIGHT] = MC_RELEASE_NOW;
+//            if(params.rightFin == T_LOOSEN)
+//                cmd.m_grasp[RIGHT] = MC_GRASP_LIMP;
+//            else if(params.rightFin == T_GRASP)
+//                cmd.m_grasp[RIGHT] = MC_GRASP_NOW;
+//            else if(params.rightFin == T_OPEN)
+//                cmd.m_grasp[RIGHT] = MC_RELEASE_NOW;
 
-            if(params.trigFin == T_LOOSEN)
-                cmd.trigger = MC_GRASP_LIMP;
-            else if(params.trigFin == T_GRASP)
-                cmd.trigger = MC_GRASP_NOW;
-            else if(params.trigFin == T_OPEN)
-                cmd.trigger = MC_RELEASE_NOW;
+//            if(params.trigFin == T_LOOSEN)
+//                cmd.trigger = MC_GRASP_LIMP;
+//            else if(params.trigFin == T_GRASP)
+//                cmd.trigger = MC_GRASP_NOW;
+//            else if(params.trigFin == T_OPEN)
+//                cmd.trigger = MC_RELEASE_NOW;
 
 
-            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
+//            ach_put(&chan_manip_cmd, &cmd, sizeof(cmd));
 
-            actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
+//            actionlib::SimpleActionClient<control_msgs::GripperCommandAction> ac("/hubo_trajectory_server_gripper", true);
 //			ac.waitForServer();
 //			ac.sendGoal(goal);
 //			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+
+            std::cout << "ATTEMPTING GRASP COMMAND" << std::endl;
+
+            hubo_motion_ros::ExecuteGripperGoal goal;
+            goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
+            goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
+
+            actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+            bool response = ac.waitForServer();
+            ac.sendGoal(goal);
+
+            std::cout << "SENT" << std::endl;
 		}
 	}
 
