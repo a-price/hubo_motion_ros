@@ -9,8 +9,4 @@
 	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
 		<remap from="/joint_states" to="/hubo/joint_states"/>
 	</node>
-
-	<node name="ps_mount_publisher" pkg="tf" type="static_transform_publisher" args="0.0381 -0.1397 0 0 0 1.57079632679 /Body_NK1 /Body_PS_Mount 100" />
-	<node name="ps1_publisher" pkg="tf" type="static_transform_publisher" args="0.0381 0 0.0127 0 0.84 0 /Body_PS_Mount /Body_PS1 100" />
-	<node name="ps2_publisher" pkg="tf" type="static_transform_publisher" args="0.0508 0 0.1016 0 0 0 /Body_PS_Mount /Body_PS2 100" />
 </launch>

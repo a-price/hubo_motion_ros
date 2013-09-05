@@ -38,6 +38,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <boost/algorithm/string.hpp>
+
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Joy.h>
@@ -74,10 +76,11 @@ Eigen::AngleAxisf prevAA;
 
 sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
-JoystickIntegrator joyInt("/Body_TSY");
+JoystickIntegrator joyInt("/Plan_TSY");
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
 
 urdf::Model huboModel;
+std::string baseFrame;
 
 bool gripperStateClosed = true;
 
@@ -130,7 +133,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 			}
 
 			// Time and Frame stamps
-			planState.header.frame_id = "/Body_TSY";
+			planState.header.frame_id = baseFrame;
 			planState.header.stamp = ros::Time::now();
 
 			gStatePublisher.publish(planState);
@@ -138,7 +141,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	}
 	else
 	{
-		planState.header.frame_id = "/Body_TSY";
+		planState.header.frame_id = baseFrame;
 		planState.header.stamp = ros::Time::now();
 		gStatePublisher.publish(planState);
 	}
@@ -191,129 +194,128 @@ void buttonCallback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr
 	case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
 		mouseInUse = true;
 		//if (feedback->marker_name == "TestButton")
+	{
+		std::cerr << "Clicked!" << std::endl;
+		std::ostringstream s;
+
+		for (int i = 0; i < planState.name.size(); i++)
 		{
-			std::cerr << "Clicked!" << std::endl;
-			std::ostringstream s;
-
-			for (int i = 0; i < planState.name.size(); i++)
+			s << planState.name[i];
+			if (i < planState.name.size() - 1)
 			{
-				s << planState.name[i];
-				if (i < planState.name.size() - 1)
-				{
-					s << ", ";
-				}
+				s << ", ";
 			}
-			s << std::endl;
-			for (int i = 0; i < planState.position.size(); i++)
-			{
-				s << planState.position[i];
-				if (i < planState.position.size() - 1)
-				{
-					s << ", ";
-				}
-			}
-			s << std::endl;
-
-			std_msgs::String jointString;
-			jointString.data = s.str();
-
-			gTextPublisher.publish(jointString);
 		}
+		s << std::endl;
+		for (int i = 0; i < planState.position.size(); i++)
+		{
+			s << planState.position[i];
+			if (i < planState.position.size() - 1)
+			{
+				s << ", ";
+			}
+		}
+		s << std::endl;
+
+		std_msgs::String jointString;
+		jointString.data = s.str();
+
+		gTextPublisher.publish(jointString);
+	}
 		break;
 	}
 }
 
 void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
-  std::ostringstream s;
-  s << "Feedback from marker '" << feedback->marker_name << "' "
-	<< " / control '" << feedback->control_name << "'";
+	std::ostringstream s;
+	s << "Feedback from marker '" << feedback->marker_name << "' "
+	  << " / control '" << feedback->control_name << "'";
 
-  switch ( feedback->event_type )
-  {
-  case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
-	  mouseInUse = true;
-	  break;
-  case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
-  {
-	  // Compute FK for end effectors that have changed
-	  // Call IK to get the joint states
-	  moveit_msgs::GetPositionFKRequest req;
-	  req.fk_link_names.push_back("RightArm");
-	  req.robot_state.joint_state = planState;
-	  req.header.stamp = ros::Time::now();
+	switch ( feedback->event_type )
+	{
+	case visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN:
+		mouseInUse = true;
+		break;
+	case visualization_msgs::InteractiveMarkerFeedback::MOUSE_UP:
+	{
+		// Compute FK for end effectors that have changed
+		// Call IK to get the joint states
+		moveit_msgs::GetPositionFKRequest req;
+		req.fk_link_names.push_back("RightArm");
+		req.robot_state.joint_state = planState;
+		req.header.stamp = ros::Time::now();
 
-	  moveit_msgs::GetPositionFKResponse resp;
-	  gFKinClient.call(req, resp);
+		moveit_msgs::GetPositionFKResponse resp;
+		gFKinClient.call(req, resp);
 
-	  std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
+		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+		{
+			std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
+			joyInt.setPose(resp.pose_stamped[0]);
+		}
+		else
+		{
+			ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
+		}
 
-	  if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
-	  {
-		  joyInt.currentPose = resp.pose_stamped[0];
-	  }
-	  else
-	  {
-		  ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
-	  }
+		gRPosePublisher.publish(joyInt.currentPose);
+		mouseInUse = false;
+		break;
+	}
 
-	  gRPosePublisher.publish(joyInt.currentPose);
-	  mouseInUse = false;
-	  break;
-  }
+	case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
+	{
+		Eigen::AngleAxisf aa;
+		aa = Eigen::Quaternionf(feedback->pose.orientation.w,
+								feedback->pose.orientation.x,
+								feedback->pose.orientation.y,
+								feedback->pose.orientation.z);
 
-  case visualization_msgs::InteractiveMarkerFeedback::POSE_UPDATE:
-  {
-	  Eigen::AngleAxisf aa;
-	  aa = Eigen::Quaternionf(feedback->pose.orientation.w,
-							  feedback->pose.orientation.x,
-							  feedback->pose.orientation.y,
-							  feedback->pose.orientation.z);
+		boost::shared_ptr<const urdf::Joint> targetJoint = huboModel.getJoint(feedback->marker_name);
+		Eigen::Vector3f axisVector = hubo_motion_ros::toEVector3(targetJoint->axis);
+		float angle;
+		// Get sign of angle
+		if (aa.axis().dot(axisVector) < 0)
+		{
+			angle = -aa.angle();
+		}
+		else
+		{
+			angle = aa.angle();
+		}
 
-	  boost::shared_ptr<const urdf::Joint> targetJoint = huboModel.getJoint(feedback->marker_name);
-	  Eigen::Vector3f axisVector = hubo_motion_ros::toEVector3(targetJoint->axis);
-	  float angle;
-	  // Get sign of angle
-	  if (aa.axis().dot(axisVector) < 0)
-	  {
-		  angle = -aa.angle();
-	  }
-	  else
-	  {
-		  angle = aa.angle();
-	  }
+		// Trim angle to joint limits
+		if (angle > targetJoint->limits->upper)
+		{
+			angle = targetJoint->limits->upper;
+		}
+		else if (angle < targetJoint->limits->lower)
+		{
+			angle = targetJoint->limits->lower;
+		}
 
-	  // Trim angle to joint limits
-	  if (angle > targetJoint->limits->upper)
-	  {
-		  angle = targetJoint->limits->upper;
-	  }
-	  else if (angle < targetJoint->limits->lower)
-	  {
-		  angle = targetJoint->limits->lower;
-	  }
+		// Locate the index of the solution joint in the plan state
+		for (int j = 0; j < planState.name.size(); j++)
+		{
+			if (feedback->marker_name == planState.name[j])
+			{
+				planState.position[j] = angle;
+			}
+		}
 
-	  // Locate the index of the solution joint in the plan state
-	  for (int j = 0; j < planState.name.size(); j++)
-	  {
-		  if (feedback->marker_name == planState.name[j])
-		  {
-			  planState.position[j] = angle;
-		  }
-	  }
+		prevAA = aa;
 
-	  prevAA = aa;
+		// Time and Frame stamps
+		planState.header.frame_id = baseFrame;
+		planState.header.stamp = ros::Time::now();
 
-	  // Time and Frame stamps
-	  planState.header.frame_id = "/Body_TSY";
-	  planState.header.stamp = ros::Time::now();
+		gStatePublisher.publish(planState);
+		break;
+	}
+	}
 
-	  gStatePublisher.publish(planState);
-	  break;
-  }
-  }
-
-  gIntServer->applyChanges();
+	gIntServer->applyChanges();
 }
 
 void makeJointMarker(std::string jointName)
@@ -354,7 +356,7 @@ void makeJointMarker(std::string jointName)
 void makeSaveButton()
 {
 	visualization_msgs::InteractiveMarker marker;
-	marker.header.frame_id = "/Body_TSY";
+	marker.header.frame_id = baseFrame;
 	marker.scale = 0.1;
 
 	marker.name = "TestButton";
@@ -389,7 +391,7 @@ void makeSaveButton()
 
 void timerCallback(const ros::TimerEvent&)
 {	
-	planState.header.frame_id = "/Body_TSY";
+	planState.header.frame_id = baseFrame;
 	planState.header.stamp = ros::Time::now();
 	gStatePublisher.publish(planState);
 	gRPosePublisher.publish(joyInt.currentPose);
@@ -407,7 +409,13 @@ int main(int argc, char** argv)
 	{
 		ROS_FATAL("Parameter for robot description not provided");
 	}
+
+	// Use the planning model instead of real one
+	boost::replace_all(robotDescription, "Body_", "/Plan_");
+	nh.setParam("/robot_planning_description", robotDescription);
+
 	huboModel.initString(robotDescription);
+	baseFrame = huboModel.getRoot()->name;
 
 	//ros::Timer frame_timer = n.createTimer(ros::Duration(0.01), frameCallback);
 
