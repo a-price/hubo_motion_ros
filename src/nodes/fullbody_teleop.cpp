@@ -58,15 +58,15 @@
 #include "hubo_motion_ros/drchubo_joint_names.h"
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
+#include "hubo_motion_ros/TeleopCmd.h"
 
 #include "joystick_integrator/JoystickIntegrator.h"
 
 #include <urdf/model.h>
 
-#include "DummyParams.h"
-#include <manip.h>
 
 ros::Subscriber gJoySubscriber;
+ros::Subscriber gCmdSubscriber;
 ros::ServiceClient gIKinClient;
 ros::ServiceClient gFKinClient;
 ros::Publisher gStatePublisher;
@@ -79,25 +79,183 @@ Eigen::AngleAxisf prevAA;
 
 sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
+geometry_msgs::PoseStamped lastPose;
 JoystickIntegrator joyInt("/Body_RAP");
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
 
 urdf::Model huboModel;
 
 bool gripperStateClosed = true;
+int armSide;
 
 
-// TODO: Change this to use ROS messages
-ach_channel_t teleopParamChan;
-teleop_params_t params;
+void publishJointResults()
+{
+    // Call IK to get the joint states
+    moveit_msgs::GetPositionIKRequest req;
 
-ach_channel_t chan_manip_cmd;
-hubo_manip_cmd_t cmd;
+    if(armSide==RIGHT)
+        req.ik_request.group_name = "right_arm";
+    else if(armSide==LEFT)
+        req.ik_request.group_name = "left_arm";
+
+
+    req.ik_request.pose_stamped = joyInt.currentPose;
+    req.ik_request.robot_state.joint_state = planState;
+
+    moveit_msgs::GetPositionIKResponse resp;
+    gIKinClient.call(req, resp);
+
+    // Check for valid solution and update the full plan
+//		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+    {
+        // Assign all of the new solution joints while preserving the existing ones
+        for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+        {
+            // Locate the index of the solution joint in the plan state
+            for (int j = 0; j < planState.name.size(); j++)
+            {
+                if (resp.solution.joint_state.name[i] == planState.name[j])
+                {
+                    planState.position[j] = resp.solution.joint_state.position[i];
+                    if (resp.solution.joint_state.velocity.size() > i)
+                        planState.velocity[j] = resp.solution.joint_state.velocity[i];
+                    if (resp.solution.joint_state.effort.size() > i)
+                        planState.effort[j] = resp.solution.joint_state.effort[i];
+                }
+            }
+        }
+
+        // Time and Frame stamps
+        planState.header.frame_id = "/Body_RAP";
+        planState.header.stamp = ros::Time::now();
+
+        gStatePublisher.publish(planState);
+    }
+}
+
+
+void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
+{
+
+    lastPose = joyInt.currentPose;
+
+    std::cerr << "COMMAND REQUEST RECEIVED" << std::endl;
+
+    if(cmd.CommandType == hubo_motion_ros::TeleopCmd::END_EFFECTOR)
+    {
+        hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+        geometry_msgs::PoseArray kittens;
+        kittens.header.frame_id = "/Body_RAP";
+        kittens.poses.push_back(joyInt.currentPose.pose);
+
+        goal.PoseTargets.push_back(kittens);
+        actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
+
+
+        ac.waitForServer();
+        ac.sendGoal(goal);
+//        bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+    }
+    else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::JOINTSPACE)
+    {
+        hubo_robot_msgs::JointTrajectoryGoal goal;
+        hubo_robot_msgs::JointTrajectoryPoint tPoint;
+        for (int i = 0; i < planState.name.size(); i++)
+        {
+            goal.trajectory.joint_names.push_back(planState.name[i]);
+            tPoint.positions.push_back(planState.position[i]);
+        }
+        goal.trajectory.points.push_back(tPoint);
+        actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
+
+
+        ac.waitForServer();
+        ac.sendGoal(goal);
+    }
+    else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::RESET)
+    {
+        joyInt.setPose(lastPose);
+        gRPosePublisher.publish(joyInt.currentPose);
+        publishJointResults();
+    }
+    else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::ZEROS)
+    {
+        // FIXME: This is a cheap, sloppy, easy way of zeroing the joints
+        // Someone who actually knows what they're doing should probably
+        // do this in a nice way that doesn't involve a pointless IK request
+
+        // Call IK to get the joint states
+        moveit_msgs::GetPositionIKRequest req;
+
+        if(armSide==RIGHT)
+            req.ik_request.group_name = "right_arm";
+        else if(armSide==LEFT)
+            req.ik_request.group_name = "left_arm";
+
+
+        req.ik_request.pose_stamped = joyInt.currentPose;
+        req.ik_request.robot_state.joint_state = planState;
+
+        moveit_msgs::GetPositionIKResponse resp;
+        gIKinClient.call(req, resp);
+
+        // Check for valid solution and update the full plan
+    //		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+        {
+            // Assign all of the new solution joints while preserving the existing ones
+            for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+            {
+                // Locate the index of the solution joint in the plan state
+                for (int j = 0; j < planState.name.size(); j++)
+                {
+                    if (resp.solution.joint_state.name[i] == planState.name[j])
+                    {
+                        planState.position[j] = 0;
+                        if (resp.solution.joint_state.velocity.size() > i)
+                            planState.velocity[j] = 0;
+                        if (resp.solution.joint_state.effort.size() > i)
+                            planState.effort[j] = 0;
+                    }
+                }
+            }
+
+            // Time and Frame stamps
+            planState.header.frame_id = "/Body_RAP";
+            planState.header.stamp = ros::Time::now();
+
+            gStatePublisher.publish(planState);
+        }
+
+        moveit_msgs::GetPositionFKRequest freq;
+        freq.robot_state.joint_state = planState;
+        freq.header.stamp = ros::Time::now();
+
+        moveit_msgs::GetPositionFKResponse fresp;
+        gFKinClient.call(freq, fresp);
+
+        if (fresp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+        {
+            joyInt.currentOrientation.w() = fresp.pose_stamped[0].pose.orientation.w;
+            joyInt.currentOrientation.x() = fresp.pose_stamped[0].pose.orientation.x;
+            joyInt.currentOrientation.y() = fresp.pose_stamped[0].pose.orientation.y;
+            joyInt.currentOrientation.z() = fresp.pose_stamped[0].pose.orientation.z;
+            joyInt.currentPose = fresp.pose_stamped[0];
+        }
+        else
+        {
+            ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
+        }
+
+        gRPosePublisher.publish(joyInt.currentPose);
+    }
+
+
+}
+
 
 void joyCallback(const sensor_msgs::JoyPtr joy)
 {
-    size_t fs;
-    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
 
 	if (mouseInUse)
 	{ return; }
@@ -116,47 +274,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 		joyInt.spacenavUpdate(joy);
 		gRPosePublisher.publish(joyInt.currentPose);
 
-		// Call IK to get the joint states
-		moveit_msgs::GetPositionIKRequest req;
-
-        if(params.arm == T_RIGHT)
-            req.ik_request.group_name = "right_arm";
-        else if(params.arm==T_LEFT)
-            req.ik_request.group_name = "left_arm";
-
-
-		req.ik_request.pose_stamped = joyInt.currentPose;
-		req.ik_request.robot_state.joint_state = planState;
-
-		moveit_msgs::GetPositionIKResponse resp;
-		gIKinClient.call(req, resp);
-
-		// Check for valid solution and update the full plan
-//		if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
-		{
-			// Assign all of the new solution joints while preserving the existing ones
-			for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
-			{
-				// Locate the index of the solution joint in the plan state
-				for (int j = 0; j < planState.name.size(); j++)
-				{
-					if (resp.solution.joint_state.name[i] == planState.name[j])
-					{
-						planState.position[j] = resp.solution.joint_state.position[i];
-						if (resp.solution.joint_state.velocity.size() > i)
-							planState.velocity[j] = resp.solution.joint_state.velocity[i];
-						if (resp.solution.joint_state.effort.size() > i)
-							planState.effort[j] = resp.solution.joint_state.effort[i];
-					}
-				}
-			}
-
-			// Time and Frame stamps
-            planState.header.frame_id = "/Body_RAP";
-			planState.header.stamp = ros::Time::now();
-
-			gStatePublisher.publish(planState);
-		}
+        publishJointResults();
 	}
 	else
 	{
@@ -184,23 +302,19 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //            actionlib::SimpleActionClient<hubo_robot_msgs::JointTrajectoryAction> ac("/hubo_trajectory_server_joint", true);
 
 
-            hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
-            geometry_msgs::PoseArray kittens;
-            kittens.header.frame_id = "/Body_RAP";
-//            kittens.header.frame_id = "/world";
-            kittens.poses.push_back(joyInt.currentPose.pose);
+//            hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+//            geometry_msgs::PoseArray kittens;
+//            kittens.header.frame_id = "/Body_RAP";
+////            kittens.header.frame_id = "/world";
+//            kittens.poses.push_back(joyInt.currentPose.pose);
 
-            goal.PoseTargets.push_back(kittens);
-            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
-            if(params.arm == T_RIGHT)
-                goal.ArmIndex.push_back(RIGHT);
-            else if(params.arm == T_LEFT)
-                goal.ArmIndex.push_back(LEFT);
+//            goal.PoseTargets.push_back(kittens);
+//            actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
 
 
-            ac.waitForServer();
-            ac.sendGoal(goal);
-            bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
+//            ac.waitForServer();
+//            ac.sendGoal(goal);
+//            bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 
 
 //            int side;
@@ -277,17 +391,17 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 //			ac.sendGoal(goal);
 //			bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
 
-            std::cout << "ATTEMPTING GRASP COMMAND" << std::endl;
+//            std::cout << "ATTEMPTING GRASP COMMAND" << std::endl;
 
-            hubo_motion_ros::ExecuteGripperGoal goal;
-            goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
-            goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
+//            hubo_motion_ros::ExecuteGripperGoal goal;
+//            goal.grip.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_GRASP_NOW);
+//            goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
 
-            actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-            bool response = ac.waitForServer();
-            ac.sendGoal(goal);
+//            actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
+//            bool response = ac.waitForServer();
+//            ac.sendGoal(goal);
 
-            std::cout << "SENT" << std::endl;
+//            std::cout << "SENT" << std::endl;
 		}
 	}
 
@@ -297,8 +411,6 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 
 void buttonCallback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
-    size_t fs;
-    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
 
 	switch ( feedback->event_type )
 	{
@@ -339,8 +451,6 @@ void buttonCallback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr
 
 void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
-    size_t fs;
-    ach_get(&teleopParamChan, &params, sizeof(params), &fs, NULL, ACH_O_LAST);
 
   std::ostringstream s;
   s << "Feedback from marker '" << feedback->marker_name << "' "
@@ -359,10 +469,6 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 
 
 //	  req.fk_link_names.push_back("RightArm");
-      if(params.arm == T_RIGHT)
-          req.fk_link_names.push_back("RightArm");
-      else if(params.arm==T_LEFT)
-          req.fk_link_names.push_back("LeftArm");
 
 	  req.robot_state.joint_state = planState;
 	  req.header.stamp = ros::Time::now();
@@ -527,11 +633,7 @@ int main(int argc, char** argv)
 	ROS_INFO("Started fullbody_teleop.");
 	ros::init(argc, argv, "fullbody_teleop");
 
-    ach_open(&teleopParamChan, "teleop-param", NULL);
-    memset(&params, 0, sizeof(params));
-
-    ach_open(&chan_manip_cmd, CHAN_HUBO_MANIP_CMD, NULL);
-    memset(&cmd, 0, sizeof(cmd));
+    armSide = RIGHT;
 
 	ros::NodeHandle nh;
 
@@ -583,6 +685,7 @@ int main(int argc, char** argv)
 	gIntServer->applyChanges();
 
 	gJoySubscriber = nh.subscribe("joy_in", 1, &joyCallback);
+    gCmdSubscriber = nh.subscribe("teleop_cmd_req", 1, &sendCommandCallback);
 	gIKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
 	gFKinClient = nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
 	gStatePublisher = nh.advertise<sensor_msgs::JointState>("joint_states", 1);

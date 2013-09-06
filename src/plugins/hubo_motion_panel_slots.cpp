@@ -114,7 +114,7 @@ void HuboMotionPanel::graspL()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -142,7 +142,7 @@ void HuboMotionPanel::openL()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -169,7 +169,7 @@ void HuboMotionPanel::loosenL()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_LEFT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -196,7 +196,7 @@ void HuboMotionPanel::graspR()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -222,7 +222,7 @@ void HuboMotionPanel::openR()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -248,7 +248,7 @@ void HuboMotionPanel::loosenR()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_RIGHT);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -277,7 +277,7 @@ void HuboMotionPanel::graspT()
 
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -303,7 +303,7 @@ void HuboMotionPanel::openT()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 
@@ -329,7 +329,7 @@ void HuboMotionPanel::loosenT()
     goal.ArmIndex.push_back(hubo_motion_ros::ExecuteGripperGoal::PTA_TRIG);
 
     actionlib::SimpleActionClient<hubo_motion_ros::ExecuteGripperAction> ac("/hubo_trajectory_server_gripper", true);
-    bool response = ac.waitForServer(ros::Duration(0.1));
+    bool response = ac.waitForServer(ros::Duration(actionWait));
 
     ac.sendGoal(goal);
 

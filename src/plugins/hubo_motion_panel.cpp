@@ -11,6 +11,8 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    char** argv;
 //    ros::init(argc, argv, "hubo_motion_panel");
 
+    actionWait = 3.0;
+
     achManager = new AchNetworkWidget;
     achManager->setNetworkName("Manipulation");
 
@@ -27,9 +29,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 
     achManager->addChannel(QString::fromLocal8Bit(CHAN_HUBO_MANIP_TRAJ),
                            AchNetworkWidget::ACHD_PUSH, 3, 1000000);
-    
-    achManager->addChannel(QString::fromLocal8Bit("teleop-param"),
-                           AchNetworkWidget::ACHD_CREATE_ONLY);
+
 
     QVBoxLayout* dumbLayout = new QVBoxLayout;
     dumbLayout->addWidget(achManager);

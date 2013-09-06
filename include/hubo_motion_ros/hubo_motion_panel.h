@@ -127,6 +127,7 @@ public:
 
     QTime refClock;
 
+
 public Q_SLOTS:
     void switchLeft(bool active);
     void switchRight(bool active);
@@ -191,6 +192,9 @@ private:
 
     QSlider* waistSlide;
     double waistScale;
+
+
+    double actionWait;
 
 signals:
     void stopLiberty();

@@ -109,9 +109,7 @@ protected:
 	AchROSBridge<hubo_manip_param> paramChannel;
 
     hubo_manip_cmd_t cmd;
-    
-    // TODO: Replace with a ROS message
-    ach_channel_t teleopParamChan;
+
 
     
 	unsigned goalCount;
@@ -137,9 +135,6 @@ public:
 		cmdChannel.flush();
 		stateChannel.flush();
 		ROS_INFO("Constructed Server.");
-        
-        // TODO: Replace with a ROS message
-        ach_open(&teleopParamChan, "teleop-param", NULL);
 
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
 
@@ -678,7 +673,7 @@ public:
     void executeGripperCB(const hubo_motion_ros::ExecuteGripperGoalConstPtr &goal)
 	{
 
-        std::cerr << "GOT A GRIPPER COMMAND" << std::endl;
+        ROS_INFO("Gripper command");
 //		if (fabs(goal->command.position) <= 0.01)
 //		{
 //			if (fabs(goal->command.max_effort) <= 0.01)
@@ -747,7 +742,6 @@ public:
             result_g_.Success = false;
             asg_.setSucceeded(result_g_);
         }
-
 	}
 };
 
