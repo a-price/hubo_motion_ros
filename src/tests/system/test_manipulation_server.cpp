@@ -297,7 +297,7 @@ bool testJointClient(hubo_robot_msgs::JointTrajectoryGoal goal)
 		for (int armIdx = 0; armIdx < NUM_ARMS; armIdx++)
 		{
 			ROS_EXPECT_EQ(manip_mode_t::MC_ANGLES, cmdActual.m_mode[armIdx]);
-			ROS_EXPECT_EQ(manip_ctrl_t::MC_NONE, cmdActual.m_ctrl[armIdx]);
+			ROS_EXPECT_EQ(manip_ctrl_t::MC_RIGID, cmdActual.m_ctrl[armIdx]);
 			ROS_EXPECT_EQ(manip_grasp_t::MC_GRASP_LIMP, cmdActual.m_grasp[armIdx]);
 			ROS_EXPECT_EQ(true, cmdActual.interrupt[armIdx]);
 		}
