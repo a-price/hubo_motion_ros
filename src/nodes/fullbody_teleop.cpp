@@ -81,7 +81,7 @@ sensor_msgs::JointState planState;
 sensor_msgs::Joy prevJoy;
 
 sensor_msgs::JointState lastPlanState;
-geometry_msgs::PoseStamped lastPose;
+geometry_msgs::PoseStamped lastPose[2];
 
 JoystickIntegrator joyInt("/Body_RAP");
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
@@ -140,14 +140,63 @@ void publishJointResults()
 }
 
 
+void placeJoystick()
+{
+    moveit_msgs::GetPositionFKRequest req;
+    req.robot_state.joint_state = planState;
+    req.header.stamp = ros::Time::now();
+
+    if(armSide==RIGHT)
+        req.fk_link_names.push_back("RightArm");
+    else if(armSide==LEFT)
+        req.fk_link_names.push_back("LeftArm");
+
+    moveit_msgs::GetPositionFKResponse resp;
+    gFKinClient.call(req, resp);
+
+    if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS
+            && resp.pose_stamped.size() > 0)
+    {
+        joyInt.currentOrientation.w() = resp.pose_stamped[0].pose.orientation.w;
+        joyInt.currentOrientation.x() = resp.pose_stamped[0].pose.orientation.x;
+        joyInt.currentOrientation.y() = resp.pose_stamped[0].pose.orientation.y;
+        joyInt.currentOrientation.z() = resp.pose_stamped[0].pose.orientation.z;
+        joyInt.currentPose = resp.pose_stamped[0];
+    }
+    else
+    {
+        ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
+    }
+
+    gRPosePublisher.publish(joyInt.currentPose);
+}
+
+
+void savePlanState()
+{
+    if(armSide==RIGHT || armSide==LEFT)
+    {
+        for(int i=0; i<planState.name.size(); i++)
+        {
+            if(DRCHUBO_JOINT_NAME_TO_LIMB.find(planState.name[i]) !=
+                                                DRCHUBO_JOINT_NAME_TO_LIMB.end())
+                if(DRCHUBO_JOINT_NAME_TO_LIMB.at(planState.name[i]) == armSide)
+                    lastPlanState.position[i] = planState.position[i];
+        }
+    }
+}
+
 void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
 {
     std::cerr << "COMMAND REQUEST RECEIVED" << std::endl;
 
     if(cmd.CommandType == hubo_motion_ros::TeleopCmd::END_EFFECTOR)
     {
-        lastPose = joyInt.currentPose;
-        lastPlanState = planState;
+        if(armSide==RIGHT)
+            lastPose[RIGHT] = joyInt.currentPose;
+        else if(armSide==LEFT)
+            lastPose[LEFT] = joyInt.currentPose;
+        savePlanState();
         
         hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
         geometry_msgs::PoseArray kittens;
@@ -164,8 +213,11 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::JOINTSPACE)
     {
-        lastPose = joyInt.currentPose;
-        lastPlanState = planState;
+        if(armSide==RIGHT)
+            lastPose[RIGHT] = joyInt.currentPose;
+        else if(armSide==LEFT)
+            lastPose[LEFT] = joyInt.currentPose;
+        savePlanState();
         
         hubo_robot_msgs::JointTrajectoryGoal goal;
         hubo_robot_msgs::JointTrajectoryPoint tPoint;
@@ -183,13 +235,27 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::RESET)
     {
-        joyInt.currentOrientation.w() = lastPose.pose.orientation.w;
-        joyInt.currentOrientation.x() = lastPose.pose.orientation.x;
-        joyInt.currentOrientation.y() = lastPose.pose.orientation.y;
-        joyInt.currentOrientation.z() = lastPose.pose.orientation.z;
-        joyInt.currentPose = lastPose;
+        if( armSide==LEFT || armSide==RIGHT )
+        {
+            joyInt.currentOrientation.w() = lastPose[armSide].pose.orientation.w;
+            joyInt.currentOrientation.x() = lastPose[armSide].pose.orientation.x;
+            joyInt.currentOrientation.y() = lastPose[armSide].pose.orientation.y;
+            joyInt.currentOrientation.z() = lastPose[armSide].pose.orientation.z;
+            joyInt.currentPose = lastPose[armSide];
+        }
         gRPosePublisher.publish(joyInt.currentPose);
-        planState = lastPlanState;
+
+        if(armSide==RIGHT || armSide==LEFT)
+        {
+            for(int i=0; i<planState.name.size(); i++)
+            {
+                if(DRCHUBO_JOINT_NAME_TO_LIMB.find(planState.name[i]) !=
+                                                    DRCHUBO_JOINT_NAME_TO_LIMB.end())
+                    if(DRCHUBO_JOINT_NAME_TO_LIMB.at(planState.name[i]) == armSide)
+                        planState.position[i] = lastPlanState.position[i];
+            }
+        }
+
         gStatePublisher.publish(planState);
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::ZEROS)
@@ -198,88 +264,68 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
         // Someone who actually knows what they're doing should probably
         // do this in a nice way that doesn't involve a pointless IK request
 
-std::cerr << "ZEROS 1" << std::endl;
         // Call IK to get the joint states
-        moveit_msgs::GetPositionIKRequest req;
-std::cerr << "ZEROS 2" << std::endl;
+//        moveit_msgs::GetPositionIKRequest req;
 
-        if(armSide==RIGHT)
-            req.ik_request.group_name = "right_arm";
-        else if(armSide==LEFT)
-            req.ik_request.group_name = "left_arm";
+//        if(armSide==RIGHT)
+//            req.ik_request.group_name = "right_arm";
+//        else if(armSide==LEFT)
+//            req.ik_request.group_name = "left_arm";
 
-std::cerr << "ZEROS 3" << std::endl;
-        req.ik_request.pose_stamped = joyInt.currentPose;
-        req.ik_request.robot_state.joint_state = planState;
-std::cerr << "ZEROS 4" << std::endl;
-        moveit_msgs::GetPositionIKResponse resp;
-        gIKinClient.call(req, resp);
-        std::cerr << resp.error_code.val << std::endl;
-std::cerr << "ZEROS 5" << std::endl;
-        // Check for valid solution and update the full plan
-        if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+//        req.ik_request.pose_stamped = joyInt.currentPose;
+//        req.ik_request.robot_state.joint_state = planState;
+//        moveit_msgs::GetPositionIKResponse resp;
+//        gIKinClient.call(req, resp);
+//        std::cerr << resp.error_code.val << std::endl;
+//        // Check for valid solution and update the full plan
+//        if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+//        {
+//            // Assign all of the new solution joints while preserving the existing ones
+//            for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+//            {
+//                // Locate the index of the solution joint in the plan state
+//                for (int j = 0; j < planState.name.size(); j++)
+//                {
+//                    if (resp.solution.joint_state.name[i] == planState.name[j])
+//                    {
+//                        planState.position[j] = 0;
+//                        if (resp.solution.joint_state.velocity.size() > i)
+//                            planState.velocity[j] = 0;
+//                        if (resp.solution.joint_state.effort.size() > i)
+//                            planState.effort[j] = 0;
+//                    }
+//                }
+//            }
+//            // Time and Frame stamps
+//            planState.header.frame_id = "/Body_RAP";
+//            planState.header.stamp = ros::Time::now();
+
+//            gStatePublisher.publish(planState);
+//        }
+
+        if(armSide==RIGHT || armSide==LEFT)
         {
-            std::cerr << "ZEROS 6" << std::endl;
-            // Assign all of the new solution joints while preserving the existing ones
-            for (int i = 0; i < resp.solution.joint_state.name.size(); i++)
+            for(int i=0; i<planState.name.size(); i++)
             {
-                // Locate the index of the solution joint in the plan state
-                for (int j = 0; j < planState.name.size(); j++)
-                {
-                    if (resp.solution.joint_state.name[i] == planState.name[j])
-                    {
-                        planState.position[j] = 0;
-                        if (resp.solution.joint_state.velocity.size() > i)
-                            planState.velocity[j] = 0;
-                        if (resp.solution.joint_state.effort.size() > i)
-                            planState.effort[j] = 0;
-                    }
-                }
+                if(DRCHUBO_JOINT_NAME_TO_LIMB.find(planState.name[i]) !=
+                                                    DRCHUBO_JOINT_NAME_TO_LIMB.end())
+                    if(DRCHUBO_JOINT_NAME_TO_LIMB.at(planState.name[i]) == armSide)
+                        planState.position[i] = 0;
             }
-std::cerr << "ZEROS 7" << std::endl;
-            // Time and Frame stamps
-            planState.header.frame_id = "/Body_RAP";
-            planState.header.stamp = ros::Time::now();
+        }
 
-            gStatePublisher.publish(planState);
-        }
-        
-        std::cerr << "ZEROS 8" << std::endl;
-        moveit_msgs::GetPositionFKRequest freq;
-        freq.robot_state.joint_state = planState;
-        freq.header.stamp = ros::Time::now();
-        
-        std::cerr << "ZEROS 9" << std::endl;
-        moveit_msgs::GetPositionFKResponse fresp;
-        gFKinClient.call(freq, fresp);
-        
-        std::cerr << "ZEROS 10" << std::endl;
-        if (fresp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS
-                && fresp.pose_stamped.size() >= 1)
-        {
-            joyInt.currentOrientation.w() = fresp.pose_stamped[0].pose.orientation.w;
-            joyInt.currentOrientation.x() = fresp.pose_stamped[0].pose.orientation.x;
-            joyInt.currentOrientation.y() = fresp.pose_stamped[0].pose.orientation.y;
-            joyInt.currentOrientation.z() = fresp.pose_stamped[0].pose.orientation.z;
-            joyInt.currentPose = fresp.pose_stamped[0];
-        }
-        else
-        {
-            ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
-        }
-        
-        std::cerr << "ZEROS 11" << std::endl;
-        gRPosePublisher.publish(joyInt.currentPose);
-        
-        std::cerr << "ZEROS 12" << std::endl;
+        placeJoystick();
+
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::SWITCH_LEFT)
     {
         armSide = LEFT;
+        placeJoystick();
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::SWITCH_RIGHT)
     {
         armSide = RIGHT;
+        placeJoystick();
     }
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::SWITCH_DUAL)
     {
@@ -503,31 +549,37 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  moveit_msgs::GetPositionFKRequest req;
 
 
-//	  req.fk_link_names.push_back("RightArm");
+//      if(armSide==RIGHT)
+//          req.fk_link_names.push_back("RightArm");
+//      else if(armSide==LEFT)
+//          req.fk_link_names.push_back("LeftArm");
 
-	  req.robot_state.joint_state = planState;
-	  req.header.stamp = ros::Time::now();
+//	  req.robot_state.joint_state = planState;
+//	  req.header.stamp = ros::Time::now();
 
-	  moveit_msgs::GetPositionFKResponse resp;
-	  gFKinClient.call(req, resp);
+//	  moveit_msgs::GetPositionFKResponse resp;
+//	  gFKinClient.call(req, resp);
 
-	  std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
+//	  std::cerr << "Response: " << resp.pose_stamped[0] << std::endl;
 
 
-	  if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
-	  {
-          joyInt.currentOrientation.w() = resp.pose_stamped[0].pose.orientation.w;
-          joyInt.currentOrientation.x() = resp.pose_stamped[0].pose.orientation.x;
-          joyInt.currentOrientation.y() = resp.pose_stamped[0].pose.orientation.y;
-          joyInt.currentOrientation.z() = resp.pose_stamped[0].pose.orientation.z;
-		  joyInt.currentPose = resp.pose_stamped[0];
-	  }
-	  else
-	  {
-		  ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
-	  }
+//	  if (resp.error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
+//	  {
+//          joyInt.currentOrientation.w() = resp.pose_stamped[0].pose.orientation.w;
+//          joyInt.currentOrientation.x() = resp.pose_stamped[0].pose.orientation.x;
+//          joyInt.currentOrientation.y() = resp.pose_stamped[0].pose.orientation.y;
+//          joyInt.currentOrientation.z() = resp.pose_stamped[0].pose.orientation.z;
+//		  joyInt.currentPose = resp.pose_stamped[0];
+//	  }
+//	  else
+//	  {
+//		  ROS_ERROR_STREAM("Failed to solve FK: " << resp.error_code.val);
+//	  }
 
-	  gRPosePublisher.publish(joyInt.currentPose);
+//	  gRPosePublisher.publish(joyInt.currentPose);
+
+      placeJoystick();
+
 	  mouseInUse = false;
 	  break;
   }
@@ -714,7 +766,8 @@ int main(int argc, char** argv)
 				planState.position.push_back(0);
 				planState.velocity.push_back(0);
 				planState.effort.push_back(0);
-			}
+            }
+
 
 	makeSaveButton();
 	gIntServer->applyChanges();
@@ -729,6 +782,17 @@ int main(int argc, char** argv)
 
 	gTimer = nh.createTimer(ros::Duration(1), &timerCallback);
 	gTimer.start();
+
+    lastPlanState = planState;
+
+    armSide = LEFT;
+    savePlanState();
+    placeJoystick();
+    lastPose[LEFT] = joyInt.currentPose;
+    armSide = RIGHT;
+    placeJoystick();
+    savePlanState();
+    lastPose[RIGHT] = joyInt.currentPose;
 
 	ros::spin();
 

@@ -123,7 +123,7 @@ const std::string DRCHUBO_URDF_FINGER_LINK_NAMES[] =
  * \brief Lists the joint names for each arm
  */
 const std::map<unsigned, std::vector<std::string> > DRCHUBO_ARM_INDEX_TO_NAMES = {
-	{LEFT, {"LSP","LSR","LSY","LEP","LWY","LWR","LWP"}},
-	{RIGHT, {"RSP","RSR","RSY","REP","RWY","RWR","RWP"}}
+    {LEFT, {"LSP","LSR","LSY","LEP","LWY","LWP","LWR"}},
+    {RIGHT, {"RSP","RSR","RSY","REP","RWY","RWP","RWR"}}
 };
 #endif //DRCHUBO_JOINT_NAMES_H
