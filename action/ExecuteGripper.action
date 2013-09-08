@@ -1,0 +1,18 @@
+#goal definition
+uint8 PTA_RIGHT=0
+uint8 PTA_LEFT=1
+uint8 PTA_TRIG=2
+
+uint8 PTA_GRASP_LIMP=0
+uint8 PTA_GRASP_NOW=1
+uint8 PTA_GRASP_RELEASE_NOW=2
+
+# Arrays here allow for multiple simultaneous arms
+uint8[] grip
+uint8[] ArmIndex
+---
+#result definition
+bool Success
+---
+#feedback
+uint8 GraspState

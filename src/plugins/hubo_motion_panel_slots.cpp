@@ -1,6 +1,7 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
 #include "hubo_motion_ros/ExecuteGripperAction.h"
+#include "hubo_motion_ros/TeleopCmd.h"
 //#include <control_msgs/GripperCommandAction.h>
 
 #include <actionlib/client/simple_action_client.h>
@@ -78,33 +79,78 @@ void SpacenavRelay::switchBoth(bool active)
 }
 
 
-void HuboMotionPanel::switchLeft(bool active)
+//void HuboMotionPanel::switchLeft(bool active)
+void HuboMotionPanel::switchLeft()
 {
-    if(active)
-    {
-        param.arm = T_LEFT;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+        hubo_motion_ros::TeleopCmd cmd;
+        cmd.CommandType = hubo_motion_ros::TeleopCmd::SWITCH_LEFT;
+        cmdPublisher.publish(cmd);
+        
+        leftSel->setStyleSheet(sideSelectedStyle);
+        rightSel->setStyleSheet("");
+        bothSel->setStyleSheet("");
+//    }
 }
 
-void HuboMotionPanel::switchRight(bool active)
+//void HuboMotionPanel::switchRight(bool active)
+void HuboMotionPanel::switchRight()
 {
-    if(active)
-    {
-        param.arm = T_RIGHT;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+        hubo_motion_ros::TeleopCmd cmd;
+        cmd.CommandType = hubo_motion_ros::TeleopCmd::SWITCH_RIGHT;
+        cmdPublisher.publish(cmd);
+        
+        leftSel->setStyleSheet("");
+        rightSel->setStyleSheet(sideSelectedStyle);
+        bothSel->setStyleSheet("");
+//    }
 }
 
-void HuboMotionPanel::switchBoth(bool active)
+//void HuboMotionPanel::switchBoth(bool active)
+void HuboMotionPanel::switchBoth()
 {
-    if(active)
-    {
-        param.arm = T_BOTH;
-        ach_put(&teleopParamChan, &param, sizeof(param));
-    }
+//    if(active)
+//    {
+        hubo_motion_ros::TeleopCmd cmd;
+        cmd.CommandType = hubo_motion_ros::TeleopCmd::SWITCH_DUAL;
+        cmdPublisher.publish(cmd); // TODO: Make this do stuff
+        
+        leftSel->setStyleSheet("");
+        rightSel->setStyleSheet("");
+        bothSel->setStyleSheet(sideSelectedStyle);
+//    }
 }
 
+void HuboMotionPanel::eeCmdSlot()
+{
+    hubo_motion_ros::TeleopCmd cmd;
+    cmd.CommandType = hubo_motion_ros::TeleopCmd::END_EFFECTOR;
+    cmdPublisher.publish(cmd);
+}
+
+void HuboMotionPanel::jsCmdSlot()
+{
+    hubo_motion_ros::TeleopCmd cmd;
+    cmd.CommandType = hubo_motion_ros::TeleopCmd::JOINTSPACE;
+    cmdPublisher.publish(cmd);
+}
+
+void HuboMotionPanel::resetCmdSlot()
+{
+    hubo_motion_ros::TeleopCmd cmd;
+    cmd.CommandType = hubo_motion_ros::TeleopCmd::RESET;
+    cmdPublisher.publish(cmd);
+}
+
+void HuboMotionPanel::zerosCmdSlot()
+{
+    hubo_motion_ros::TeleopCmd cmd;
+    cmd.CommandType = hubo_motion_ros::TeleopCmd::ZEROS;
+    cmdPublisher.publish(cmd);
+}
 
 
 void HuboMotionPanel::graspL()
@@ -124,8 +170,6 @@ void HuboMotionPanel::graspL()
         openLB->setStyleSheet("");
         graspLB->setStyleSheet(selectedStyle);
     }
-
-
 
 //    if(active)
 //    {

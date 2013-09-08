@@ -50,7 +50,6 @@
 #include <Eigen/Geometry>
 
 
-#include "DummyParams.h"
 
 namespace hubo_motion_ros
 {
@@ -148,6 +147,8 @@ public:
     HuboMotionPanel(QWidget *parent = 0);
     ~HuboMotionPanel();
 
+    ros::NodeHandle nh;
+    ros::Publisher cmdPublisher;
 
     ach_channel_t teleopParamChan;
 
@@ -159,8 +160,9 @@ public:
 
 
     QString selectedStyle;
+    QString sideSelectedStyle;
+    QString groupStyleSheet;
 
-    teleop_params_t param;
 
 private:
     AchNetworkWidget* achManager;
@@ -168,6 +170,9 @@ private:
     QCheckBox* spacenavCheck;
     QDoubleSpinBox* libertyFreq;
     QVector< QVector<QLineEdit*> > datas;
+    
+    QGroupBox* graspBox;
+    
     QButtonGroup* graspSelL;
     QPushButton* graspLB;
     QPushButton* openLB;
@@ -186,12 +191,20 @@ private:
 
 
     QButtonGroup* sideSel;
-    QRadioButton* leftSel;
-    QRadioButton* rightSel;
-    QRadioButton* bothSel;
+    QPushButton* leftSel;
+    QPushButton* rightSel;
+    QPushButton* bothSel;
+    
+    
+    QPushButton* eeCmd;
+    QPushButton* jsCmd;
+    QPushButton* resetCmd;
+    QPushButton* zerosCmd;
 
     QSlider* waistSlide;
     double waistScale;
+    
+    
 
 
     double actionWait;
@@ -234,9 +247,14 @@ protected Q_SLOTS:
     void loosenT();
 
 
-    void switchLeft(bool active);
-    void switchRight(bool active);
-    void switchBoth(bool active);
+    void switchLeft();
+    void switchRight();
+    void switchBoth();
+    
+    void eeCmdSlot();
+    void jsCmdSlot();
+    void resetCmdSlot();
+    void zerosCmdSlot();
 
 };
 

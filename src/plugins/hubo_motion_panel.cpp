@@ -1,5 +1,6 @@
 
 #include "hubo_motion_ros/hubo_motion_panel.h"
+#include "hubo_motion_ros/TeleopCmd.h"
 
 namespace hubo_motion_ros
 {
@@ -12,6 +13,19 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    ros::init(argc, argv, "hubo_motion_panel");
 
     actionWait = 3.0;
+    
+    groupStyleSheet = "QGroupBox {"
+                      "border: 1px solid gray;"
+                      "border-radius: 9px;"
+                      "margin-top: 0.5em;"
+                      "}"
+                      "QGroupBox::title {"
+                      "subcontrol-origin: margin;"
+                      "left: 10px;"
+                      "padding: 0 3px 0 3px;"
+                      "}";
+    
+    cmdPublisher = nh.advertise<hubo_motion_ros::TeleopCmd>("teleop_cmd_req", 1);
 
     achManager = new AchNetworkWidget;
     achManager->setNetworkName("Manipulation");
@@ -39,56 +53,91 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     QColor color(100, 230, 100);
     selectedStyle = "background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #dadbde, stop: 1 "
             + color.name() + ")";
+    
+    QColor sideColor(100, 100, 230);
+    sideSelectedStyle = "background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #dadbde, stop: 1 "
+            + sideColor.name() + ")";
 
     QHBoxLayout* checkLayout = new QHBoxLayout;
-    libertyCheck = new QCheckBox;
-    libertyCheck->setText("Liberty");
-    libertyCheck->setToolTip("Use the Liberty sensor system for teleoperation");
-    connect(libertyCheck, SIGNAL(toggled(bool)), this, SLOT(handleLibCheckToggle(bool)));
-    checkLayout->addWidget(libertyCheck, 0, Qt::AlignLeft);
-    libertyCheck->setEnabled(false);
+//    libertyCheck = new QCheckBox;
+//    libertyCheck->setText("Liberty");
+//    libertyCheck->setToolTip("Use the Liberty sensor system for teleoperation");
+//    connect(libertyCheck, SIGNAL(toggled(bool)), this, SLOT(handleLibCheckToggle(bool)));
+//    checkLayout->addWidget(libertyCheck, 0, Qt::AlignLeft);
+//    libertyCheck->setEnabled(false);
 
-    spacenavCheck = new QCheckBox;
-    spacenavCheck->setText("Spacenav");
-    spacenavCheck->setToolTip("Use a 6-axis spacenav joystick for teleoperation");
-    connect(spacenavCheck, SIGNAL(toggled(bool)), this, SLOT(handleNavCheckToggle(bool)));
-    checkLayout->addWidget(spacenavCheck, 0, Qt::AlignLeft);
-    spacenavCheck->setEnabled(false);
+//    spacenavCheck = new QCheckBox;
+//    spacenavCheck->setText("Spacenav");
+//    spacenavCheck->setToolTip("Use a 6-axis spacenav joystick for teleoperation");
+//    connect(spacenavCheck, SIGNAL(toggled(bool)), this, SLOT(handleNavCheckToggle(bool)));
+//    checkLayout->addWidget(spacenavCheck, 0, Qt::AlignLeft);
+//    spacenavCheck->setEnabled(false);
 
     sideSel = new QButtonGroup;
     sideSel->setExclusive(true);
     QVBoxLayout* selLayout = new QVBoxLayout;
-    leftSel = new QRadioButton;
+    leftSel = new QPushButton;
     leftSel->setText("Left");
     leftSel->setToolTip("Control left arm with SpaceNav");
-    leftSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    connect(leftSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchLeft(bool)));
-    connect(leftSel, SIGNAL(toggled(bool)), this, SLOT(switchLeft(bool)));
+//    leftSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+//    connect(leftSel, SIGNAL(clicked()), &spacenavThread, SLOT(switchLeft(bool)));
+    connect(leftSel, SIGNAL(clicked()), this, SLOT(switchLeft()));
     selLayout->addWidget(leftSel);
-    rightSel = new QRadioButton;
+    rightSel = new QPushButton;
     rightSel->setText("Right");
     rightSel->setToolTip("Control right arm with SpaceNav");
-    rightSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    connect(rightSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchRight(bool)));
-    connect(rightSel, SIGNAL(toggled(bool)), this, SLOT(switchRight(bool)));
+//    rightSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+//    connect(rightSel, SIGNAL(clicked()), &spacenavThread, SLOT(switchRight(bool)));
+    connect(rightSel, SIGNAL(clicked()), this, SLOT(switchRight()));
     selLayout->addWidget(rightSel);
-    bothSel = new QRadioButton;
+    bothSel = new QPushButton;
     bothSel->setText("Both");
     bothSel->setToolTip("Control both arms simultaneously");
-    bothSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
-    connect(bothSel, SIGNAL(toggled(bool)), &spacenavThread, SLOT(switchBoth(bool)));
-    connect(bothSel, SIGNAL(toggled(bool)), this, SLOT(switchBoth(bool)));
-//    selLayout->addWidget(bothSel);
+//    bothSel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
+//    connect(bothSel, SIGNAL(clicked()), &spacenavThread, SLOT(switchBoth(bool)));
+    connect(bothSel, SIGNAL(clicked()), this, SLOT(switchBoth()));
+    selLayout->addWidget(bothSel);
+    bothSel->setEnabled(false);
 
     checkLayout->addLayout(selLayout);
 
-    rightSel->setChecked(true);
+//    rightSel->setChecked(true);
+    rightSel->click();
+    
+    
+    QVBoxLayout* cmdLayout = new QVBoxLayout;
+    
+    eeCmd = new QPushButton;
+    eeCmd->setText("Pose Command");
+    eeCmd->setToolTip("Instruct the physical Hubo to go\nto the displayed Pose in a straight line.");
+    connect(eeCmd, SIGNAL(clicked()), this, SLOT(eeCmdSlot()));
+    cmdLayout->addWidget(eeCmd);
+    
+    jsCmd = new QPushButton;
+    jsCmd->setText("Joint Command");
+    jsCmd->setToolTip("Instruct the physical Hubo to go\nto the displayed joint configuration.");
+    connect(jsCmd, SIGNAL(clicked()), this, SLOT(jsCmdSlot()));
+    cmdLayout->addWidget(jsCmd);
+    
+    resetCmd = new QPushButton;
+    resetCmd->setText("Reset");
+    resetCmd->setToolTip("Move the virtual Hubo's arms back to\nthe last commanded state.");
+    connect(resetCmd, SIGNAL(clicked()), this, SLOT(resetCmdSlot()));
+    cmdLayout->addWidget(resetCmd);
+    
+    zerosCmd = new QPushButton;
+    zerosCmd->setText("Zero");
+    zerosCmd->setToolTip("Move the virtual Hubo's arm joints back to all zeros");
+    connect(zerosCmd, SIGNAL(clicked()), this, SLOT(zerosCmdSlot()));
+    cmdLayout->addWidget(zerosCmd);
+    
+    checkLayout->addLayout(cmdLayout);
 
 
     QLabel* freqLab = new QLabel;
     freqLab->setText("Display Frequency:");
     freqLab->setToolTip("Rate (Hz) at which to display data from Liberty");
-    checkLayout->addWidget(freqLab, 0, Qt::AlignRight);
+//    checkLayout->addWidget(freqLab, 0, Qt::AlignRight);
 
     libertyFreq = new QDoubleSpinBox;
     libertyFreq->setToolTip(freqLab->toolTip());
@@ -97,7 +146,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     connect(libertyFreq, SIGNAL(valueChanged(double)), &spacenavThread, SLOT(getUpdateFrequency(double)));
     libertyFreq->setValue(5);
 
-    checkLayout->addWidget(libertyFreq, 0, Qt::AlignLeft);
+//    checkLayout->addWidget(libertyFreq, 0, Qt::AlignLeft);
     dumbLayout->addLayout(checkLayout);
 
     connect(this, SIGNAL(stopLiberty()), &libertyThread, SLOT(haltOperation()));
@@ -109,18 +158,20 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     connect(&spacenavThread, SIGNAL(spacenavQuitting()), this, SLOT(handleNavQuit()));
 
 
-    QGridLayout* grid = new QGridLayout;
-    datas.resize(2);
-    for(int i=0; i<2; i++)
-    {
-        datas[i].resize(7);
-        for(int j=0; j<7; j++)
-        {
-            datas[i][j] = new QLineEdit;
-            datas[i][j]->setReadOnly(true);
-            grid->addWidget(datas[i][j], i, j, 1, 1);
-        }
-    }
+//    QGridLayout* grid = new QGridLayout;
+//    datas.resize(2);
+//    for(int i=0; i<2; i++)
+//    {
+//        datas[i].resize(7);
+//        for(int j=0; j<7; j++)
+//        {
+//            datas[i][j] = new QLineEdit;
+//            datas[i][j]->setReadOnly(true);
+//            grid->addWidget(datas[i][j], i, j, 1, 1);
+//        }
+//    }
+    
+    QVBoxLayout* graspLayout = new QVBoxLayout;
 
     QHBoxLayout* rightGraspLay = new QHBoxLayout;
     graspSelR = new QButtonGroup;
@@ -147,7 +198,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    connect(loosenRB, SIGNAL(clicked()), &libertyThread, SLOT(loosenR()));
 //    connect(loosenRB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenR()));
 
-    dumbLayout->addLayout(rightGraspLay);
+    graspLayout->addLayout(rightGraspLay);
 
     QHBoxLayout* leftGraspLay = new QHBoxLayout;
     graspSelL = new QButtonGroup;
@@ -174,7 +225,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    connect(loosenLB, SIGNAL(clicked()), &libertyThread, SLOT(loosenL()));
 //    connect(loosenLB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenL()));
 
-    dumbLayout->addLayout(leftGraspLay);
+    graspLayout->addLayout(leftGraspLay);
 
     QHBoxLayout* trigGraspLay = new QHBoxLayout;
     graspSelT = new QButtonGroup;
@@ -195,15 +246,19 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     graspSelT->addButton(loosenTB);
     connect(loosenTB, SIGNAL(clicked()), this, SLOT(loosenT()));
 
-    dumbLayout->addLayout(trigGraspLay);
+    graspLayout->addLayout(trigGraspLay);
 
-
+    graspBox = new QGroupBox;
+    graspBox->setStyleSheet(groupStyleSheet);
+    graspBox->setLayout(graspLayout);
+    graspBox->setTitle("Grasp Commands");
+    dumbLayout->addWidget(graspBox);
 
     libertyThread.openChannels();
     libertyThread.openLiberty();
     spacenavThread.openChannels();
 
-    dumbLayout->addLayout(grid);
+//    dumbLayout->addLayout(grid);
 
     waistSlide = new QSlider(Qt::Horizontal);
     waistSlide->setMaximum(160);
@@ -217,6 +272,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     setLayout(dumbLayout);
 
 
+    
 
 
 }
