@@ -1,16 +1,18 @@
 <launch>
 	<param name="/robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
     <param name="/position_speed" value="0.025" />
-    <param name="/use_local_rotations" value="0" />
 
 	<node name="spacenav_node" pkg="spacenav_node" type="spacenav_node" />
 	<node name="fullbody_teleop" pkg="hubo_motion_ros" type="fullbody_teleop" output="screen" >
 		<remap from="joy_in" to="/spacenav/joy" />
-		<remap from="/joint_states" to="/hubo/joint_states"/>
+		<remap from="/joint_states" to="/hubo/joint_plan_states"/>
 	</node>
-	<node name="kinematics_server" pkg="hubo_motion_ros" type="kinematics_server" output="screen" />
-	<node name="robot_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
-		<remap from="/joint_states" to="/hubo/joint_states"/>
+	<node name="kinematics_server" pkg="hubo_motion_ros" type="kinematics_server" output="screen" >
+		<remap from="/robot_description" to="/robot_planning_description"/>
+    </node>
+	<node name="robot_plan_tf_publisher" pkg="robot_state_publisher" type="state_publisher" >
+		<remap from="/robot_description" to="/robot_planning_description"/>
+		<remap from="/joint_states" to="/hubo/joint_plan_states"/>
 	</node>
     <node name="hubo_trajectory_server" pkg="hubo_motion_ros" type="hubo_trajectory_server" />
 </launch>

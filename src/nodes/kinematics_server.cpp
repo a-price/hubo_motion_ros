@@ -45,6 +45,8 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+#include <urdf/model.h>
+
 #include <hubo.h>
 
 #include "hubo_motion_ros/PoseConverter.h"
@@ -52,6 +54,7 @@
 #include "hubo_motion_ros/DrcHuboKin.h"
 
 DrcHuboKin* kinematics;
+std::string baseFrame;
 
 int getMoveitErrorCode(RobotKin::rk_result_t result)
 {
@@ -169,14 +172,21 @@ bool fkCallback(moveit_msgs::GetPositionFK::Request& request, moveit_msgs::GetPo
 
 			geometry_msgs::PoseStamped pose;
 			pose.pose = hubo_motion_ros::toPose(resultFrame);
-            pose.header.frame_id = "/Body_RAP";
+			pose.header.frame_id = baseFrame;
 			pose.header.stamp = ros::Time::now();
 			response.pose_stamped.push_back(pose);
 			response.fk_link_names.push_back(request.fk_link_names[i]);
 		}
 		else
 		{
-			ROS_ERROR("Group name '%s' is unknown.", request.fk_link_names[i].c_str());
+			std::ostringstream os;
+			os << "Group name '" << request.fk_link_names[i] << "' is unknown. Options are:\n";
+			for (int l = 0; l < kinematics->nLinkages(); l++)
+			{
+				os << kinematics->linkage(l).name();
+				os << std::endl;
+			}
+			ROS_ERROR_STREAM(os.str());
 			response.error_code.val = moveit_msgs::MoveItErrorCodes::INVALID_GROUP_NAME;
 			return false;
 		}
@@ -199,6 +209,10 @@ int main(int argc, char** argv)
 		ROS_ERROR("Could not find robot description.");
 		return -1;
 	}
+
+	urdf::Model huboModel;
+	huboModel.initString(robotDescription);
+	baseFrame = huboModel.getRoot()->name;
 
 	kinematics = new DrcHuboKin(robotDescription, true);
 

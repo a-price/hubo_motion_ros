@@ -65,10 +65,10 @@ DrcHuboKin::DrcHuboKin(std::string urdf, bool isFiletext) : RobotKin::Robot()
 	{
 		this->loadURDF(urdf);
 	}
-	linkage("Body_RSP").name("RightArm");
-	linkage("Body_LSP").name("LeftArm");
-	linkage("Body_RHY").name("RightLeg");
-	linkage("Body_LHY").name("LeftLeg");
+    linkage("/Plan_RSP").name("RightArm");
+    linkage("/Plan_LSP").name("LeftArm");
+    linkage("/Plan_RHY").name("RightLeg");
+    linkage("/Plan_LHY").name("LeftLeg");
 
     joint("LEP").max(0);
     joint("REP").max(0);

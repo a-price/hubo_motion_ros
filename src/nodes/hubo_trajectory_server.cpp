@@ -384,7 +384,7 @@ public:
 
 			// Set arm properties
 			cmd.m_mode[armIdx] = manip_mode_t::MC_TRAJ;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_READY;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 			cmd.m_grasp[armIdx] = manip_grasp_t::MC_GRASP_AT_END;
 			cmd.interrupt[armIdx] = true;
 			cmd.goalID[armIdx] = goalCount;
@@ -485,7 +485,7 @@ public:
 		size_t armIdx = RIGHT;
 		{
 			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
-            cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
+			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
 			cmd.interrupt[armIdx] = interrupting;
 			cmd.goalID[armIdx] = goalCount;
@@ -503,7 +503,6 @@ public:
         ///////////result_p_.Success = false;
 
 		ros::Time tOut;
-
 
 		// Set global properties
 		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
@@ -532,7 +531,6 @@ public:
 
 		goalCount++;
 
-
 		// Iterate through all poses provided
 		ROS_INFO("%lu steps to complete.", goal->PoseTargets[0].poses.size());
 		for (int poseIter = 0; poseIter < goal->PoseTargets[0].poses.size(); poseIter++)
@@ -542,7 +540,6 @@ public:
 			tOut = ros::Time::now() + ros::Duration(10,0);
 			currentPoses.poses.clear();
 			goalCount++;
-
 
 			// Build cmd packet by iterating through all arms provided
 			for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
@@ -579,7 +576,7 @@ public:
 
 				cmd.pose[armIdx] = pose;
 
-                currentPoses.poses.push_back(goalPose);
+				currentPoses.poses.push_back(goalPose);
 			}
 
 			// Publish the target hand positions for debugging purposes
@@ -590,7 +587,7 @@ public:
 
 			// NB: the feedback publishing must be nested here, since the protocol only defines one pose at a time.
 			// write to channel
-            cmdChannel.pushState(cmd);
+			cmdChannel.pushState(cmd);
 
 			// wait for completion, with preemption
 			hubo_manip_state_t state;

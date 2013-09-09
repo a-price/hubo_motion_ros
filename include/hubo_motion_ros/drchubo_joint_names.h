@@ -38,8 +38,8 @@ const std::string DRCHUBO_JOINT_NAMES[] =
 const std::string DRCHUBO_URDF_JOINT_NAMES[] =
 {
 	"TSY","NKY","NK1","NK2",
-    "LSP","LSR","LSY","LEP","LWY","LWP","LWR",
-    "RSP","RSR","RSY","REP","RWY","RWP","RWR","",
+	"LSP","LSR","LSY","LEP","LWY","LWR","LWP",
+	"RSP","RSR","RSY","REP","RWY","RWR","RWP","",
 	"LHY","LHR","LHP","LKP","LAP","LAR","",
 	"RHY","RHR","RHP","RKP","RAP","RAR",
 	"RF1","RF2","RF3","","",
@@ -92,8 +92,8 @@ const std::map<std::string, unsigned> DRCHUBO_JOINT_NAME_TO_LIMB = {
  */
 const unsigned DRCHUBO_JOINT_INDEX_TO_LIMB_POSITION[] = {
 	0,0,0,0,
-	0,1,2,3,4,5,6,
-	0,1,2,3,4,5,6,0,
+	0,1,2,3,4,6,5,
+	0,1,2,3,4,6,5,0,
 	0,1,2,3,4,5,0,
 	0,1,2,3,4,5,
 	0,0,0,0,0,

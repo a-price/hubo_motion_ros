@@ -3,7 +3,7 @@
 	<group ns="hubo">
 		<group ns="kinematics">
 			<param name="spoof_daemon" value="$(arg sim)" />
-			<param name="robot_description" textfile="$(find drchubo-v2)/robots/drchubo-v2.urdf" />
+			<param name="robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
 			<node name="kinematics_server" pkg="hubo_motion_ros" type="kinematics_server" output="screen"/>
 			<!--test name="test_manipulation_server" pkg="hubo_motion_ros" type="test_manipulation_server" test-name="test_manipulation_server" /-->
 			<node name="test_kinematics_server" pkg="hubo_motion_ros" type="test_kinematics_server" output="screen"/>
