@@ -51,7 +51,7 @@ geometry_msgs::PoseStamped createSimplePoseGoal()
 {
 	geometry_msgs::PoseStamped poseStamped;
 
-    poseStamped.header.frame_id = "/Body_RAP";
+    poseStamped.header.frame_id = "/rightFoot";
 
 	poseStamped.pose.position.x = 0.35;
 	poseStamped.pose.position.y = -0.35;

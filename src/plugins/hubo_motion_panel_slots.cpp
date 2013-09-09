@@ -151,11 +151,16 @@ void HuboMotionPanel::nudgeHelper(hubo_motion_ros::TeleopPoseNudge &nudge)
         nudge.frame = hubo_motion_ros::TeleopPoseNudge::GLOBAL;
     
     if(transRad->isChecked())
+    {
         nudge.type = hubo_motion_ros::TeleopPoseNudge::TRANSLATION;
+        nudge.value = transStep/100.0;
+    }
     else if(rotRad->isChecked())
+    {
         nudge.type = hubo_motion_ros::TeleopPoseNudge::ROTATION;
-    
-    nudge.value = stepBox->value();
+        nudge.value = rotStep*M_PI/180.0;
+    }
+
 }
 
 

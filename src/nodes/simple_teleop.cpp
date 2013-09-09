@@ -113,7 +113,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
             }
     
             // Time and Frame stamps
-            planState.header.frame_id = "/Body_RAP";
+            planState.header.frame_id = "/rightFoot";
             planState.header.stamp = ros::Time::now();
     
             gStatePublisher.publish(planState);
@@ -153,7 +153,7 @@ void poseCallback(geometry_msgs::PoseStampedConstPtr poseIn)
             }
     
             // Time and Frame stamps
-            planState.header.frame_id = "/Body_RAP";
+            planState.header.frame_id = "/rightFoot";
             planState.header.stamp = ros::Time::now();
     
             gStatePublisher.publish(planState);

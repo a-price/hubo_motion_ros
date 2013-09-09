@@ -71,6 +71,7 @@
 ros::Subscriber gJoySubscriber;
 ros::Subscriber gCmdSubscriber;
 ros::Subscriber gNudgeSubscriber;
+ros::Subscriber gStateSubscriber;
 ros::ServiceClient gIKinClient;
 ros::ServiceClient gFKinClient;
 ros::Publisher gStatePublisher;
@@ -87,7 +88,8 @@ sensor_msgs::Joy prevJoy;
 sensor_msgs::JointState lastPlanState;
 geometry_msgs::PoseStamped lastPose[2];
 
-JoystickIntegrator joyInt("/Plan_RAP");
+//JoystickIntegrator joyInt("/Plan_RAR");
+JoystickIntegrator joyInt("/planRightFoot");
 boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
 
 urdf::Model huboModel;
@@ -97,6 +99,42 @@ bool gripperStateClosed = true;
 int armSide;
 enum { DUAL_ARM = 2 };
 
+
+void jointStateCallback( const sensor_msgs::JointStateConstPtr &state )
+{
+    for(int i=0; i<state->name.size(); i++)
+    {
+        if(DRCHUBO_JOINT_NAME_TO_LIMB.find(state->name[i]) !=
+                                            DRCHUBO_JOINT_NAME_TO_LIMB.end())
+        {
+            for(int legSide=0; legSide<2; legSide++)
+            {
+                if(DRCHUBO_JOINT_NAME_TO_LIMB.at(state->name[i]) == legSide+2)
+                {
+                    for(int j=0; j<planState.name.size(); j++)
+                    {
+                        if(state->name[i] == planState.name[j])
+                        {
+                            planState.position[j] = state->position[i];
+                            lastPlanState.position[j] = state->position[i];
+                        }
+                    }
+                }
+            }
+        }
+        else if(state->name[i] == "TSY")
+        {
+            for(int j=0; j<planState.name.size(); j++)
+            {
+                if(state->name[i] == planState.name[j])
+                {
+                    planState.position[j] = state->position[i];
+                    lastPlanState.position[j] = state->position[i];
+                }
+            }
+        }
+    }
+}
 
 void publishJointResults()
 {
@@ -137,7 +175,7 @@ void publishJointResults()
         }
 
         // Time and Frame stamps
-        planState.header.frame_id = "/Body_RAP";
+        planState.header.frame_id = baseFrame;
         planState.header.stamp = ros::Time::now();
 
         gStatePublisher.publish(planState);
@@ -252,15 +290,21 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
 
     if(cmd.CommandType == hubo_motion_ros::TeleopCmd::END_EFFECTOR)
     {
-        if(armSide==RIGHT)
-            lastPose[RIGHT] = joyInt.currentPose;
-        else if(armSide==LEFT)
-            lastPose[LEFT] = joyInt.currentPose;
-        savePlanState();
-        
         hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
+        if(armSide==RIGHT)
+        {
+            lastPose[RIGHT] = joyInt.currentPose;
+            goal.ArmIndex.push_back(RIGHT);
+        }
+        else if(armSide==LEFT)
+        {
+            lastPose[LEFT] = joyInt.currentPose;
+            goal.ArmIndex.push_back(LEFT);
+        }
+        savePlanState();
+
         geometry_msgs::PoseArray kittens;
-        kittens.header.frame_id = "/Body_RAP";
+        kittens.header.frame_id = baseFrame;
         kittens.poses.push_back(joyInt.currentPose.pose);
 
         goal.PoseTargets.push_back(kittens);
@@ -376,7 +420,7 @@ void joyCallback(const sensor_msgs::JoyPtr joy)
 	else
 	{
         // Time and Frame stamps
-        planState.header.frame_id = "/Plan_RAP";
+        planState.header.frame_id = baseFrame;
         planState.header.stamp = ros::Time::now();
 		gStatePublisher.publish(planState);
 	}
@@ -504,7 +548,7 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
 	  prevAA = aa;
 
 	  // Time and Frame stamps
-      planState.header.frame_id = "/Body_RAP";
+      planState.header.frame_id = baseFrame;
 	  planState.header.stamp = ros::Time::now();
 
 	  gStatePublisher.publish(planState);
@@ -600,6 +644,8 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "fullbody_teleop");
 
     armSide = RIGHT;
+    joyInt.settings.useLocalRotations = false;
+    joyInt.settings.useLocalTranslations = false;
 
 	ros::NodeHandle nh;
 
@@ -611,11 +657,16 @@ int main(int argc, char** argv)
 
 	// Use the planning model instead of real one
 	boost::replace_all(robotDescription, "Body_", "/Plan_");
+    boost::replace_all(robotDescription, "rightFoot", "/planRightFoot");
+    boost::replace_all(robotDescription, "leftFoot", "/planLeftFoot");
+    boost::replace_all(robotDescription, "rightPalm", "/planRightPalm");
+    boost::replace_all(robotDescription, "leftPalm", "/planLeftPalm");
 	nh.setParam("/robot_planning_description", robotDescription);
 
 	huboModel.initString(robotDescription);
 //	baseFrame = huboModel.getRoot()->name;
-	baseFrame = "Plan_RAP";
+//    baseFrame = "Plan_RAR";
+    baseFrame = "planRightFoot";
 
 	//ros::Timer frame_timer = n.createTimer(ros::Duration(0.01), frameCallback);
 
@@ -661,6 +712,7 @@ int main(int argc, char** argv)
 	gJoySubscriber = nh.subscribe("joy_in", 1, &joyCallback);
     gCmdSubscriber = nh.subscribe("teleop_cmd_req", 1, &sendCommandCallback);
     gNudgeSubscriber = nh.subscribe("teleop_nudge_req", 1, &nudgeRequestCallback);
+    gStateSubscriber = nh.subscribe("/hubo/joint_states", 1, &jointStateCallback);
 	gIKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
 	gFKinClient = nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
 	gStatePublisher = nh.advertise<sensor_msgs::JointState>("joint_states", 1);

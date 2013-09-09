@@ -497,6 +497,7 @@ public:
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
     {
         ROS_INFO("Pose command");
+        std::cerr << "POSE COMMAND GO" << std::endl;
 		geometry_msgs::PoseArray currentPoses;
 		std::set<size_t> armIndices;
 		bool preempted = false, error = false, completed = false;
@@ -544,6 +545,7 @@ public:
 			// Build cmd packet by iterating through all arms provided
 			for (size_t armIter = 0; armIter < goal->ArmIndex.size(); armIter++)
             {
+                ROS_INFO("Setting pose for arm #%d", armIter);
 				size_t armIdx = goal->ArmIndex[armIter];
 				if (armIdx > (size_t)NUM_ARMS) {continue;}
 				armIndices.insert(armIdx);
@@ -588,6 +590,8 @@ public:
 			// NB: the feedback publishing must be nested here, since the protocol only defines one pose at a time.
 			// write to channel
 			cmdChannel.pushState(cmd);
+
+            std::cerr << cmd << std::endl;
 
 			// wait for completion, with preemption
 			hubo_manip_state_t state;
