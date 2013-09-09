@@ -1,0 +1,8 @@
+# Goal definition
+float32 waistAngle
+---
+# Result definition
+bool Success
+---
+# Feedback
+float32 waistAngle

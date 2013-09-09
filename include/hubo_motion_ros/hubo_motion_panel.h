@@ -50,6 +50,8 @@
 #include <Eigen/Geometry>
 
 
+#include "hubo_motion_ros/TeleopPoseNudge.h"
+
 
 namespace hubo_motion_ros
 {
@@ -149,6 +151,7 @@ public:
 
     ros::NodeHandle nh;
     ros::Publisher cmdPublisher;
+    ros::Publisher nudgePublisher;
 
     ach_channel_t teleopParamChan;
 
@@ -162,6 +165,8 @@ public:
     QString selectedStyle;
     QString sideSelectedStyle;
     QString groupStyleSheet;
+    
+    void nudgeHelper(hubo_motion_ros::TeleopPoseNudge &nudge);
 
 
 private:
@@ -202,10 +207,34 @@ private:
     QPushButton* zerosCmd;
 
     QSlider* waistSlide;
+    QDoubleSpinBox* waistSpin;
     double waistScale;
     
     
-
+    QGroupBox* nudgeBox;
+    
+    QButtonGroup* frameGroup;
+    QRadioButton* globalRad;
+    QRadioButton* localRad;
+    
+    QDoubleSpinBox* stepBox;
+    
+    QButtonGroup* dGroup;
+    QRadioButton* transRad;
+    QRadioButton* rotRad;
+    
+    QPushButton* plusX;
+    QPushButton* plusY;
+    QPushButton* plusZ;
+    
+    QPushButton* minusX;
+    QPushButton* minusY;
+    QPushButton* minusZ;
+    
+    
+    double transStep;
+    double rotStep;
+    
 
     double actionWait;
 
@@ -214,13 +243,32 @@ signals:
     void stopSpacenav();
 
 protected Q_SLOTS:
+    
+    void handlePlusX();
+    void handlePlusY();
+    void handlePlusZ();
+    
+    void handleMinusX();
+    void handleMinusY();
+    void handleMinusZ();
 
+    void handleGlobalToggle(bool active);
+    void handleLocalToggle(bool active);
+    
+    void handleTransToggle(bool active);
+    void handleRotToggle(bool active);
+    
+    void handleStepChange(double value);
 
     void handleLibCheckToggle(bool active);
     void handleNavCheckToggle(bool active);
     void getRefreshData(double data, int i, int j);
     void handleLibQuit();
     void handleNavQuit();
+    
+    void handleWaistSlide(int angle);
+    void handleWaistRelease();
+    void handleWaistSpin();
 
 //    void graspR(bool active);
 //    void graspL(bool active);

@@ -2,7 +2,8 @@
 #include "hubo_motion_ros/hubo_motion_panel.h"
 #include "hubo_motion_ros/ExecuteGripperAction.h"
 #include "hubo_motion_ros/TeleopCmd.h"
-//#include <control_msgs/GripperCommandAction.h>
+#include "hubo_motion_ros/ExecuteWaistAngleAction.h"
+#include "hubo_motion_ros/TeleopPoseNudge.h"
 
 #include <actionlib/client/simple_action_client.h>
 
@@ -76,6 +77,149 @@ void SpacenavRelay::switchBoth(bool active)
     {
         // Maybe do something here? Probably doesn't matter...
     }
+}
+
+void HuboMotionPanel::handleGlobalToggle(bool active)
+{
+    /// Nothing to do here...
+}
+
+void HuboMotionPanel::handleLocalToggle(bool active)
+{
+    /// Nothing to do here...
+}
+
+void HuboMotionPanel::handleTransToggle(bool active)
+{
+    if(active)
+        stepBox->setValue(transStep);
+}
+
+void HuboMotionPanel::handleRotToggle(bool active)
+{
+    if(active)
+        stepBox->setValue(rotStep);
+}
+
+void HuboMotionPanel::handleStepChange(double value)
+{
+    if(transRad->isChecked())
+        transStep = value;
+    else if(rotRad->isChecked())
+        rotStep = value;
+}
+
+
+
+
+
+void HuboMotionPanel::handleWaistSlide(int angle)
+{
+    waistSpin->setValue(angle);
+}
+
+void HuboMotionPanel::handleWaistRelease()
+{
+    hubo_motion_ros::ExecuteWaistAngleGoal goal;
+    goal.waistAngle = (double)(waistSpin->value())*M_PI/180.0;
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteWaistAngleAction> ac("/hubo_trajectory_server_waist", true);
+    bool response = ac.waitForServer(ros::Duration(actionWait));
+
+    ac.sendGoal(goal);
+}
+
+void HuboMotionPanel::handleWaistSpin()
+{
+    waistSlide->setValue((int)waistSpin->value());
+    
+    hubo_motion_ros::ExecuteWaistAngleGoal goal;
+    goal.waistAngle = (double)(waistSpin->value())*M_PI/180.0;
+
+    actionlib::SimpleActionClient<hubo_motion_ros::ExecuteWaistAngleAction> ac("/hubo_trajectory_server_waist", true);
+    bool response = ac.waitForServer(ros::Duration(actionWait));
+
+    ac.sendGoal(goal);
+}
+
+
+void HuboMotionPanel::nudgeHelper(hubo_motion_ros::TeleopPoseNudge &nudge)
+{
+    if(localRad->isChecked())
+        nudge.frame = hubo_motion_ros::TeleopPoseNudge::LOCAL;
+    else if(globalRad->isChecked())
+        nudge.frame = hubo_motion_ros::TeleopPoseNudge::GLOBAL;
+    
+    if(transRad->isChecked())
+        nudge.type = hubo_motion_ros::TeleopPoseNudge::TRANSLATION;
+    else if(rotRad->isChecked())
+        nudge.type = hubo_motion_ros::TeleopPoseNudge::ROTATION;
+    
+    nudge.value = stepBox->value();
+}
+
+
+void HuboMotionPanel::handlePlusX()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::X_AXIS;
+    
+    nudgePublisher.publish(nudge);
+}
+
+void HuboMotionPanel::handlePlusY()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::Y_AXIS;
+    
+    nudgePublisher.publish(nudge);
+}
+
+void HuboMotionPanel::handlePlusZ()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::Z_AXIS;
+    
+    nudgePublisher.publish(nudge);
+}
+
+void HuboMotionPanel::handleMinusX()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::X_AXIS;
+    nudge.value *= -1;
+    
+    nudgePublisher.publish(nudge);
+}
+
+void HuboMotionPanel::handleMinusY()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::Y_AXIS;
+    nudge.value *= -1;
+    
+    nudgePublisher.publish(nudge);
+}
+
+void HuboMotionPanel::handleMinusZ()
+{
+    hubo_motion_ros::TeleopPoseNudge nudge;
+    nudgeHelper(nudge);
+    
+    nudge.axis = hubo_motion_ros::TeleopPoseNudge::Z_AXIS;
+    nudge.value *= -1;
+    
+    nudgePublisher.publish(nudge);
 }
 
 

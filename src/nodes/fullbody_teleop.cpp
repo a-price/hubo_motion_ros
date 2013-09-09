@@ -59,6 +59,7 @@
 #include "hubo_motion_ros/PoseConverter.h"
 #include "hubo_motion_ros/ExecutePoseTrajectoryAction.h"
 #include "hubo_motion_ros/TeleopCmd.h"
+#include "hubo_motion_ros/TeleopPoseNudge.h"
 
 #include "joystick_integrator/JoystickIntegrator.h"
 
@@ -67,6 +68,7 @@
 
 ros::Subscriber gJoySubscriber;
 ros::Subscriber gCmdSubscriber;
+ros::Subscriber gNudgeSubscriber;
 ros::ServiceClient gIKinClient;
 ros::ServiceClient gFKinClient;
 ros::Publisher gStatePublisher;
@@ -184,6 +186,65 @@ void savePlanState()
                     lastPlanState.position[i] = planState.position[i];
         }
     }
+}
+
+void nudgeRequestCallback(const hubo_motion_ros::TeleopPoseNudge nudge)
+{
+    if(nudge.type == hubo_motion_ros::TeleopPoseNudge::TRANSLATION)
+    {
+        Eigen::Vector3f trans; trans.setZero();
+        if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::X_AXIS)
+            trans[0] = nudge.value;
+        else if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::Y_AXIS)
+            trans[1] = nudge.value;
+        else if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::Z_AXIS)
+            trans[2] = nudge.value;
+        else
+            return;
+        
+        if(nudge.frame == hubo_motion_ros::TeleopPoseNudge::LOCAL)
+            trans = joyInt.currentOrientation * trans;
+        
+        joyInt.currentPose.pose.position.x += trans.x();
+        joyInt.currentPose.pose.position.y += trans.y();
+        joyInt.currentPose.pose.position.z += trans.z();
+    }
+    else if(nudge.type == hubo_motion_ros::TeleopPoseNudge::ROTATION)
+    {
+        double alpha=0, beta=0, gamma=0;
+        if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::X_AXIS)
+            alpha = nudge.value;
+        else if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::Y_AXIS)
+            beta = nudge.value;
+        else if(nudge.axis == hubo_motion_ros::TeleopPoseNudge::Z_AXIS)
+            gamma = nudge.value;
+        else
+            return;
+        
+        Eigen::Quaternionf q = rpyToQ(alpha, beta, gamma);
+        
+        if(nudge.frame == hubo_motion_ros::TeleopPoseNudge::LOCAL)
+            joyInt.currentOrientation = joyInt.currentOrientation * q;
+        else if(nudge.frame == hubo_motion_ros::TeleopPoseNudge::GLOBAL)
+            joyInt.currentOrientation = q * joyInt.currentOrientation;
+        else
+            return;
+        
+        joyInt.currentPose.pose.orientation.w = joyInt.currentOrientation.w();
+        joyInt.currentPose.pose.orientation.x = joyInt.currentOrientation.x();
+        joyInt.currentPose.pose.orientation.y = joyInt.currentOrientation.y();
+        joyInt.currentPose.pose.orientation.z = joyInt.currentOrientation.z();
+        
+        joyInt.currentPose.header.frame_id = joyInt.frame_id;
+        joyInt.currentPose.header.stamp = ros::Time::now();
+    }
+    else
+        return;
+    
+    
+    gRPosePublisher.publish(joyInt.currentPose);
+
+    publishJointResults();
 }
 
 void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
@@ -774,6 +835,7 @@ int main(int argc, char** argv)
 
 	gJoySubscriber = nh.subscribe("joy_in", 1, &joyCallback);
     gCmdSubscriber = nh.subscribe("teleop_cmd_req", 1, &sendCommandCallback);
+    gNudgeSubscriber = nh.subscribe("teleop_nudge_req", 1, &nudgeRequestCallback);
 	gIKinClient = nh.serviceClient<moveit_msgs::GetPositionIK>("/hubo/kinematics/ik_service");
 	gFKinClient = nh.serviceClient<moveit_msgs::GetPositionFK>("/hubo/kinematics/fk_service");
 	gStatePublisher = nh.advertise<sensor_msgs::JointState>("joint_states", 1);

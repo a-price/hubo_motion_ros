@@ -26,6 +26,7 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
                       "}";
     
     cmdPublisher = nh.advertise<hubo_motion_ros::TeleopCmd>("teleop_cmd_req", 1);
+    nudgePublisher = nh.advertise<hubo_motion_ros::TeleopPoseNudge>("teleop_nudge_req", 1);
 
     achManager = new AchNetworkWidget;
     achManager->setNetworkName("Manipulation");
@@ -259,16 +260,147 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     spacenavThread.openChannels();
 
 //    dumbLayout->addLayout(grid);
+    
+    QHBoxLayout* waistBoxLayout = new QHBoxLayout;
+    QLabel* waistLab = new QLabel;
+    waistLab->setText("Waist Angle");
+    waistBoxLayout->addWidget(waistLab);
+    
+    waistSpin = new QDoubleSpinBox;
+    waistSpin->setMaximum(160);
+    waistSpin->setMinimum(-160);
+    waistSpin->setValue(0);
+    waistSpin->setToolTip("Waist Angle Value (degrees)");
+    connect(waistSpin, SIGNAL(editingFinished()), this, SLOT(handleWaistSpin()));
+    waistBoxLayout->addWidget(waistSpin);
+    
+    QLabel* degLab = new QLabel;
+    degLab->setText("(deg)");
+    waistBoxLayout->addWidget(degLab);
+    
+    dumbLayout->addLayout(waistBoxLayout);
 
     waistSlide = new QSlider(Qt::Horizontal);
     waistSlide->setMaximum(160);
     waistSlide->setMinimum(-160);
     waistSlide->setValue(0);
     waistSlide->setToolTip("Waist Angle Value");
-    connect(waistSlide, SIGNAL(valueChanged(int)), &libertyThread, SLOT(getWaistValue(int)));
-    connect(waistSlide, SIGNAL(valueChanged(int)), &spacenavThread, SLOT(getWaistValue(int)));
+    connect(waistSlide, SIGNAL(valueChanged(int)), this, SLOT(handleWaistSlide(int)));
+    connect(waistSlide, SIGNAL(sliderReleased()), this, SLOT(handleWaistRelease()));
+//    connect(waistSlide, SIGNAL(valueChanged(int)), &libertyThread, SLOT(getWaistValue(int)));
+//    connect(waistSlide, SIGNAL(valueChanged(int)), &spacenavThread, SLOT(getWaistValue(int)));
+    
     dumbLayout->addWidget(waistSlide);
-
+    
+    
+    nudgeBox = new QGroupBox;
+    nudgeBox->setStyleSheet(groupStyleSheet);
+    nudgeBox->setTitle("Target Nudging");
+    QVBoxLayout* nudgeLayout = new QVBoxLayout;
+    
+    QHBoxLayout* selectLayout = new QHBoxLayout;
+    
+    frameGroup = new QButtonGroup;
+    frameGroup->setExclusive(true);
+    
+    globalRad = new QRadioButton;
+    globalRad->setText("Global");
+    globalRad->setToolTip("Nudge the end effector in Global Coordinates");
+    connect(globalRad, SIGNAL(toggled(bool)), this, SLOT(handleGlobalToggle(bool)));
+    frameGroup->addButton(globalRad);
+    selectLayout->addWidget(globalRad, 0, Qt::AlignLeft);
+    
+    localRad = new QRadioButton;
+    localRad->setText("Local");
+    localRad->setToolTip("Nudge the end effector in Local Coordinates");
+    connect(localRad, SIGNAL(toggled(bool)), this, SLOT(handleLocalToggle(bool)));
+    frameGroup->addButton(localRad);
+    selectLayout->addWidget(localRad, 0, Qt::AlignLeft);
+    
+    transStep = 1;
+    rotStep = 5;
+    stepBox = new QDoubleSpinBox;
+    stepBox->setToolTip("Distance for target to step with each button click\nTranslation (cm) or Rotation (deg)");
+    stepBox->setValue(transStep);
+    stepBox->setDecimals(1);
+    stepBox->setMinimum(0);
+    stepBox->setSingleStep(1);
+    connect(stepBox, SIGNAL(valueChanged(double)), this, SLOT(handleStepChange(double)));
+    selectLayout->addWidget(stepBox, 0, Qt::AlignCenter);
+    
+    
+    dGroup = new QButtonGroup;
+    dGroup->setExclusive(true);
+    
+    transRad = new QRadioButton;
+    transRad->setText("Translate");
+    transRad->setToolTip("Set the nudging to translation mode");
+    connect(transRad, SIGNAL(toggled(bool)), this, SLOT(handleTransToggle(bool)));
+    dGroup->addButton(transRad);
+    selectLayout->addWidget(transRad, 0, Qt::AlignRight);
+    
+    rotRad = new QRadioButton;
+    rotRad->setText("Rotate");
+    rotRad->setToolTip("Set the nudging to rotation mode");
+    connect(rotRad, SIGNAL(toggled(bool)), this, SLOT(handleRotToggle(bool)));
+    dGroup->addButton(rotRad);
+    selectLayout->addWidget(rotRad, 0, Qt::AlignRight);
+    
+    
+    globalRad->setChecked(true);
+    transRad->setChecked(true);
+    
+    
+    nudgeLayout->addLayout(selectLayout);
+    
+    
+    QHBoxLayout* posLayout = new QHBoxLayout;
+    
+    plusX = new QPushButton;
+    plusX->setText("+ X");
+    plusX->setToolTip("Nudge Positively along the X Axis");
+    connect(plusX, SIGNAL(clicked()), this, SLOT(handlePlusX()));
+    posLayout->addWidget(plusX);
+    
+    plusY = new QPushButton;
+    plusY->setText("+ Y");
+    plusY->setToolTip("Nudge Positively along the Y Axis");
+    connect(plusY, SIGNAL(clicked()), this, SLOT(handlePlusY()));
+    posLayout->addWidget(plusY);
+    
+    plusZ = new QPushButton;
+    plusZ->setText("+ Z");
+    plusZ->setToolTip("Nudge Positively along the Z Axis");
+    connect(plusZ, SIGNAL(clicked()), this, SLOT(handlePlusZ()));
+    posLayout->addWidget(plusZ);
+    
+    nudgeLayout->addLayout(posLayout);
+    
+    QHBoxLayout* negLayout = new QHBoxLayout;
+    
+    minusX = new QPushButton;
+    minusX->setText("- X");
+    minusX->setToolTip("Nudge Negatively along the X Axis");
+    connect(minusX, SIGNAL(clicked()), this, SLOT(handleMinusX()));
+    negLayout->addWidget(minusX);
+    
+    minusY = new QPushButton;
+    minusY->setText("- Y");
+    minusY->setToolTip("Nudge Negatively along the Y Axis");
+    connect(minusY, SIGNAL(clicked()), this, SLOT(handleMinusY()));
+    negLayout->addWidget(minusY);
+    
+    minusZ = new QPushButton;
+    minusZ->setText("- Z");
+    minusZ->setToolTip("Nudge Negatively along the Z Axis");
+    connect(minusZ, SIGNAL(clicked()), this, SLOT(handleMinusZ()));
+    negLayout->addWidget(minusZ);
+    
+    nudgeLayout->addLayout(negLayout);
+    
+    nudgeBox->setLayout(nudgeLayout);
+    dumbLayout->addWidget(nudgeBox);
+    
     setLayout(dumbLayout);
 
 

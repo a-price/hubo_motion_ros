@@ -63,6 +63,7 @@
 #include "hubo_motion_ros/ExecuteGripperAction.h"
 //#include "hubo_motion_ros/ExecuteJointTrajectoryAction.h"
 #include "hubo_motion_ros/AchROSBridge.h"
+#include "hubo_motion_ros/ExecuteWaistAngleAction.h"
 
 #define JOINTS_NOT_IMPLEMENTED
 
@@ -86,10 +87,12 @@ protected:
 	actionlib::SimpleActionServer<hubo_robot_msgs::JointTrajectoryAction> asj_;
 //	actionlib::SimpleActionServer<control_msgs::GripperCommandAction> asg_;
     actionlib::SimpleActionServer<hubo_motion_ros::ExecuteGripperAction> asg_;
+    actionlib::SimpleActionServer<hubo_motion_ros::ExecuteWaistAngleAction> asw_;
 
 	std::string action_name_j_;
 	std::string action_name_p_;
 	std::string action_name_g_;
+    std::string action_name_w_;
 
 	ros::Publisher finalHandPub;
 
@@ -120,9 +123,12 @@ public:
 		asp_(nh_, name + "_pose", boost::bind(&HuboManipulationAction::executePoseCB, this, _1), false),
 		asj_(nh_, name + "_joint", boost::bind(&HuboManipulationAction::executeJointCB, this, _1), false),
 		asg_(nh_, name + "_gripper", boost::bind(&HuboManipulationAction::executeGripperCB, this, _1), false),
+        asw_(nh_, name + "_waist", boost::bind(&HuboManipulationAction::executeWaistCB, this, _1), false),
+        
 		action_name_j_(name + "_joint"),
 		action_name_p_(name + "_pose"),
 		action_name_g_(name + "_gripper"),
+        action_name_w_(name + "_waist"),
 		cmdChannel(CHAN_HUBO_MANIP_CMD),
 		trajChannel(CHAN_HUBO_MANIP_TRAJ),
 		paramChannel(CHAN_HUBO_MANIP_PARAM),
@@ -131,6 +137,7 @@ public:
 		asp_.start();
 		asj_.start();
 		asg_.start();
+        asw_.start();
 		goalCount = 1;
 		cmdChannel.flush();
 		stateChannel.flush();
@@ -144,6 +151,15 @@ public:
 	~HuboManipulationAction(void)
 	{
 	}
+    
+    void executeWaistCB(const hubo_motion_ros::ExecuteWaistAngleGoalConstPtr &goal)
+    {
+        cmd.waistAngle = goal->waistAngle;
+        cmdChannel.pushState(cmd);
+        
+        // Should probably do other things, like feedback and result,
+        // but who really cares right now?
+    }
 
 	void executeJointCB(const hubo_robot_msgs::JointTrajectoryGoalConstPtr &goal)
 	{
@@ -511,8 +527,8 @@ public:
 //			cmd.goalID[armIdx] = goalCount;
 		}
 		// Open or close the hands
-		cmdChannel.pushState(cmd);
-		stateChannel.waitState(250);
+//		cmdChannel.pushState(cmd);
+//		stateChannel.waitState(250);
 
 		goalCount++;
 
