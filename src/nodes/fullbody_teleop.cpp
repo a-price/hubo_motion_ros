@@ -87,6 +87,7 @@ sensor_msgs::Joy prevJoy;
 
 sensor_msgs::JointState lastPlanState;
 geometry_msgs::PoseStamped lastPose[2];
+Eigen::Isometry3d offsetPose;
 
 //JoystickIntegrator joyInt("/Plan_RAR");
 JoystickIntegrator joyInt("/planRightFoot");
@@ -95,10 +96,81 @@ boost::shared_ptr<interactive_markers::InteractiveMarkerServer> gIntServer;
 urdf::Model huboModel;
 std::string baseFrame;
 
-bool gripperStateClosed = true;
 int armSide;
 enum { DUAL_ARM = 2 };
 
+
+
+void dualHelper()
+{
+    moveit_msgs::GetPositionFKRequest req;
+    req.fk_link_names.push_back("RightArm");
+
+    moveit_msgs::GetPositionFKResponse resp;
+    gFKinClient.call(req, resp);
+
+    Eigen::Isometry3d rightPose;
+    Eigen::Quaterniond rightQuat(resp.pose_stamped[0].pose.orientation.w,
+                                 resp.pose_stamped[0].pose.orientation.x,
+                                 resp.pose_stamped[0].pose.orientation.y,
+                                 resp.pose_stamped[0].pose.orientation.z);
+    Eigen::Vector3d rightTrans(resp.pose_stamped[0].pose.position.x,
+                               resp.pose_stamped[0].pose.position.y,
+                               resp.pose_stamped[0].pose.position.z);
+    rightPose.translate(rightTrans);
+    rightPose.rotate(rightQuat);
+    
+    Eigen::Isometry3d leftPose = rightPose * offsetPose.inverse();
+    Eigen::Vector3d leftTrans = leftPose.translation();
+    Eigen::Quaterniond leftQuat(leftPose.rotation());
+    
+    
+    moveit_msgs::GetPositionIKRequest ikreq;
+
+    
+    ikreq.ik_request.group_name = "left_arm";
+
+    ikreq.ik_request.pose_stamped = joyInt.currentPose;
+    
+    ikreq.ik_request.pose_stamped.pose.position.x = leftTrans.x();
+    ikreq.ik_request.pose_stamped.pose.position.y = leftTrans.y();
+    ikreq.ik_request.pose_stamped.pose.position.z = leftTrans.z();
+    
+    ikreq.ik_request.pose_stamped.pose.orientation.w = leftQuat.w();
+    ikreq.ik_request.pose_stamped.pose.orientation.x = leftQuat.x();
+    ikreq.ik_request.pose_stamped.pose.orientation.y = leftQuat.y();
+    ikreq.ik_request.pose_stamped.pose.orientation.z = leftQuat.z();
+    
+    ikreq.ik_request.robot_state.joint_state = planState;
+
+    moveit_msgs::GetPositionIKResponse ikresp;
+    gIKinClient.call(ikreq, ikresp);
+
+    {
+        // Assign all of the new solution joints while preserving the existing ones
+        for (int i = 0; i < ikresp.solution.joint_state.name.size(); i++)
+        {
+            // Locate the index of the solution joint in the plan state
+            for (int j = 0; j < planState.name.size(); j++)
+            {
+                if (ikresp.solution.joint_state.name[i] == planState.name[j])
+                {
+                    planState.position[j] = ikresp.solution.joint_state.position[i];
+                    if (ikresp.solution.joint_state.velocity.size() > i)
+                        planState.velocity[j] = ikresp.solution.joint_state.velocity[i];
+                    if (ikresp.solution.joint_state.effort.size() > i)
+                        planState.effort[j] = ikresp.solution.joint_state.effort[i];
+                }
+            }
+        }
+
+        // Time and Frame stamps
+        planState.header.frame_id = baseFrame;
+        planState.header.stamp = ros::Time::now();
+
+        gStatePublisher.publish(planState);
+    }
+}
 
 void jointStateCallback( const sensor_msgs::JointStateConstPtr &state )
 {
@@ -141,7 +213,7 @@ void publishJointResults()
     // Call IK to get the joint states
     moveit_msgs::GetPositionIKRequest req;
 
-    if(armSide==RIGHT)
+    if(armSide==RIGHT || armSide==DUAL_ARM)
         req.ik_request.group_name = "right_arm";
     else if(armSide==LEFT)
         req.ik_request.group_name = "left_arm";
@@ -180,6 +252,10 @@ void publishJointResults()
 
         gStatePublisher.publish(planState);
     }
+    
+    
+    if(armSide == DUAL_ARM)
+        dualHelper();
 }
 
 
@@ -189,7 +265,7 @@ void placeJoystick()
     req.robot_state.joint_state = planState;
     req.header.stamp = ros::Time::now();
 
-    if(armSide==RIGHT)
+    if(armSide==RIGHT || armSide==DUAL_ARM)
         req.fk_link_names.push_back("RightArm");
     else if(armSide==LEFT)
         req.fk_link_names.push_back("LeftArm");
@@ -282,7 +358,9 @@ void nudgeRequestCallback(const hubo_motion_ros::TeleopPoseNudge nudge)
     gRPosePublisher.publish(joyInt.currentPose);
 
     publishJointResults();
+    
 }
+
 
 void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
 {
@@ -291,7 +369,7 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
     if(cmd.CommandType == hubo_motion_ros::TeleopCmd::END_EFFECTOR)
     {
         hubo_motion_ros::ExecutePoseTrajectoryGoal goal;
-        if(armSide==RIGHT)
+        if(armSide==RIGHT || armSide==DUAL_ARM)
         {
             lastPose[RIGHT] = joyInt.currentPose;
             goal.ArmIndex.push_back(RIGHT);
@@ -308,9 +386,34 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
         kittens.poses.push_back(joyInt.currentPose.pose);
 
         goal.PoseTargets.push_back(kittens);
+        
+        
+        if(armSide==DUAL_ARM)
+        {
+            Eigen::Vector3d trans = offsetPose.translation();
+            Eigen::Quaterniond quat(offsetPose.rotation());
+            
+            geometry_msgs::PoseStamped off = joyInt.currentPose;
+            off.pose.position.x = trans.x();
+            off.pose.position.y = trans.y();
+            off.pose.position.z = trans.z();
+            
+            off.pose.orientation.w = quat.w();
+            off.pose.orientation.x = quat.x();
+            off.pose.orientation.y = quat.y();
+            off.pose.orientation.z = quat.z();
+            
+            geometry_msgs::PoseArray puppies;
+            puppies.header.frame_id = baseFrame;
+            puppies.poses.push_back(off.pose);
+            
+            goal.DualOffset.push_back(puppies);
+        }
+        
+        
         actionlib::SimpleActionClient<hubo_motion_ros::ExecutePoseTrajectoryAction> ac("/hubo_trajectory_server_pose", true);
-
-
+        
+        
         ac.waitForServer();
         ac.sendGoal(goal);
 //        bool finished_before_timeout = ac.waitForResult(ros::Duration(10.0));
@@ -359,6 +462,8 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
                         planState.position[i] = lastPlanState.position[i];
             }
         }
+        else
+            planState = lastPlanState; // TODO: Make sure this works
 
         gStatePublisher.publish(planState);
     }
@@ -391,6 +496,43 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
     else if(cmd.CommandType == hubo_motion_ros::TeleopCmd::SWITCH_DUAL)
     {
         armSide = DUAL_ARM;
+        
+        moveit_msgs::GetPositionFKRequest req;
+        req.fk_link_names.push_back("RightArm");
+    
+        moveit_msgs::GetPositionFKResponse resp;
+        gFKinClient.call(req, resp);
+    
+        Eigen::Isometry3d rightPose;
+        Eigen::Quaterniond rightQuat(resp.pose_stamped[0].pose.orientation.w,
+                                     resp.pose_stamped[0].pose.orientation.x,
+                                     resp.pose_stamped[0].pose.orientation.y,
+                                     resp.pose_stamped[0].pose.orientation.z);
+        Eigen::Vector3d rightTrans(resp.pose_stamped[0].pose.position.x,
+                                   resp.pose_stamped[0].pose.position.y,
+                                   resp.pose_stamped[0].pose.position.z);
+        rightPose.translate(rightTrans);
+        rightPose.rotate(rightQuat);
+        
+        
+        req.fk_link_names[0] = "LeftArm";
+        
+        gFKinClient.call(req, resp);
+        
+        Eigen::Isometry3d leftPose;
+        Eigen::Quaterniond leftQuat(resp.pose_stamped[0].pose.orientation.w,
+                                     resp.pose_stamped[0].pose.orientation.x,
+                                     resp.pose_stamped[0].pose.orientation.y,
+                                     resp.pose_stamped[0].pose.orientation.z);
+        Eigen::Vector3d leftTrans(resp.pose_stamped[0].pose.position.x,
+                                   resp.pose_stamped[0].pose.position.y,
+                                   resp.pose_stamped[0].pose.position.z);
+        leftPose.translate(leftTrans);
+        leftPose.rotate(leftQuat);
+        
+        offsetPose = leftPose.inverse() * rightPose;
+        
+        gRPosePublisher.publish(joyInt.currentPose);
     }
 
 }
@@ -497,7 +639,6 @@ void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPt
   {
 	  // Compute FK for end effectors that have changed
 	  // Call IK to get the joint states
-	  moveit_msgs::GetPositionFKRequest req;
 
       placeJoystick();
 

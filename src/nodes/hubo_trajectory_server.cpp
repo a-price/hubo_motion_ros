@@ -146,6 +146,10 @@ public:
 		finalHandPub = nh_.advertise<geometry_msgs::PoseArray>("/hubo/final_hand_poses", 1);
 
         memset(&cmd, 0, sizeof(cmd));
+        
+        for(int m=0; m<2; m++)
+            cmd.m_ctrl[m] = manip_ctrl_t::MC_RIGID;
+        
 	}
 
 	~HuboManipulationAction(void)
@@ -471,28 +475,28 @@ public:
 #endif
 	}
 
-	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
-	{
-		hubo_manip_cmd_t cmd;
-		memset(&cmd, 0, sizeof(cmd));
+//	void forceSetGrasps(manip_grasp_t grasps, bool interrupting)
+//	{
+//		hubo_manip_cmd_t cmd;
+//		memset(&cmd, 0, sizeof(cmd));
 
-		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
-		cmd.stopNorm = IMMOBILITY_THRESHOLD;
-		goalCount++;
+//		cmd.convergeNorm = CONVERGENCE_THRESHOLD;
+//		cmd.stopNorm = IMMOBILITY_THRESHOLD;
+//		goalCount++;
 
-		// Set the initial hand state
-		//for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
-		size_t armIdx = RIGHT;
-		{
-			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
-			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
-			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
-			cmd.interrupt[armIdx] = interrupting;
-			cmd.goalID[armIdx] = goalCount;
-		}
+//		// Set the initial hand state
+//		//for (size_t armIdx = 0; armIdx < NUM_ARMS; armIdx++)
+//		size_t armIdx = RIGHT;
+//		{
+//			cmd.m_mode[armIdx] = manip_mode_t::MC_READY;
+////			cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
+//			cmd.m_grasp[armIdx] = grasps; //manip_grasp_t::MC_GRASP_NOW;
+//			cmd.interrupt[armIdx] = interrupting;
+//			cmd.goalID[armIdx] = goalCount;
+//		}
 
-		cmdChannel.pushState(cmd);
-	}
+//		cmdChannel.pushState(cmd);
+//	}
 
 	void executePoseCB(const hubo_motion_ros::ExecutePoseTrajectoryGoalConstPtr &goal)
     {
@@ -552,7 +556,6 @@ public:
 
 //				cmd.m_mode[armIdx] = manip_mode_t::MC_TRANS_QUAT;
                 cmd.m_mode[armIdx] = manip_mode_t::MC_TELEOP;
-                cmd.m_ctrl[armIdx] = manip_ctrl_t::MC_RIGID;
 				cmd.interrupt[armIdx] = true;
                 cmd.goalID[armIdx] = goalCount;
 //				if (goal->PoseTargets[0].poses.size()-1 == poseIter)
@@ -579,6 +582,24 @@ public:
 				cmd.pose[armIdx] = pose;
 
 				currentPoses.poses.push_back(goalPose);
+                
+                
+                if(goal->DualOffset.size()<armIter)
+                {
+                    cmd.m_mode[armIdx] = manip_mode_t::MC_DUAL_TELEOP;
+                    if(armIdx==RIGHT)
+                        cmd.m_mode[LEFT] = manip_mode_t::MC_READY;
+                    else if(armIdx==LEFT)
+                        cmd.m_mode[RIGHT] = manip_mode_t::MC_READY;
+                    
+                    cmd.dual_offset.x = goal->DualOffset[armIter].position.x;
+                    cmd.dual_offset.y = goal->DualOffset[armIter].position.y;
+                    cmd.dual_offset.z = goal->DualOffset[armIter].position.z;
+                    cmd.dual_offset.w = goal->DualOffset[armIter].orientation.w;
+                    cmd.dual_offset.i = goal->DualOffset[armIter].orientation.x;
+                    cmd.dual_offset.j = goal->DualOffset[armIter].orientation.y;
+                    cmd.dual_offset.k = goal->DualOffset[armIter].orientation.z;
+                }
 			}
 
 			// Publish the target hand positions for debugging purposes

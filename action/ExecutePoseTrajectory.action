@@ -1,8 +1,10 @@
 #goal definition
 uint8 PTA_RIGHT=0
 uint8 PTA_LEFT=1
+uint8 PTA_DUAL=2
 # Arrays here allow for multiple simultaneous arms
 geometry_msgs/PoseArray[] PoseTargets
+geometry_msgs/PoseArray[] DualOffset
 uint8[] ArmIndex
 bool[] ClosedStateAtBeginning
 bool[] ClosedStateAtEnd
