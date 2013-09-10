@@ -592,13 +592,13 @@ public:
                     else if(armIdx==LEFT)
                         cmd.m_mode[RIGHT] = manip_mode_t::MC_READY;
                     
-                    cmd.dual_offset.x = goal->DualOffset[armIter].position.x;
-                    cmd.dual_offset.y = goal->DualOffset[armIter].position.y;
-                    cmd.dual_offset.z = goal->DualOffset[armIter].position.z;
-                    cmd.dual_offset.w = goal->DualOffset[armIter].orientation.w;
-                    cmd.dual_offset.i = goal->DualOffset[armIter].orientation.x;
-                    cmd.dual_offset.j = goal->DualOffset[armIter].orientation.y;
-                    cmd.dual_offset.k = goal->DualOffset[armIter].orientation.z;
+                    cmd.dual_offset.x = goal->DualOffset[armIter].poses[poseIter].position.x;
+                    cmd.dual_offset.y = goal->DualOffset[armIter].poses[poseIter].position.y;
+                    cmd.dual_offset.z = goal->DualOffset[armIter].poses[poseIter].position.z;
+                    cmd.dual_offset.w = goal->DualOffset[armIter].poses[poseIter].orientation.w;
+                    cmd.dual_offset.i = goal->DualOffset[armIter].poses[poseIter].orientation.x;
+                    cmd.dual_offset.j = goal->DualOffset[armIter].poses[poseIter].orientation.y;
+                    cmd.dual_offset.k = goal->DualOffset[armIter].poses[poseIter].orientation.z;
                 }
 			}
 
