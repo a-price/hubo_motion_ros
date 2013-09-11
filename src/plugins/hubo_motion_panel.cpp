@@ -25,11 +25,15 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
                       "padding: 0 3px 0 3px;"
                       "}";
     
+    std::cout << "HMP -- Advertising topics" << std::endl;
+
     cmdPublisher = nh.advertise<hubo_motion_ros::TeleopCmd>("teleop_cmd_req", 1);
     nudgePublisher = nh.advertise<hubo_motion_ros::TeleopPoseNudge>("teleop_nudge_req", 1);
 
     achManager = new AchNetworkWidget;
     achManager->setNetworkName("Manipulation");
+
+    std::cout << "HMP -- Opening Ach channels" << std::endl;
 
     achManager->addChannel("liberty");
 
@@ -74,6 +78,8 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    checkLayout->addWidget(spacenavCheck, 0, Qt::AlignLeft);
 //    spacenavCheck->setEnabled(false);
 
+    std::cout << "HMP -- Selection Buttons" << std::endl;
+
     sideSel = new QButtonGroup;
     sideSel->setExclusive(true);
     QVBoxLayout* selLayout = new QVBoxLayout;
@@ -98,13 +104,13 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    connect(bothSel, SIGNAL(clicked()), &spacenavThread, SLOT(switchBoth(bool)));
     connect(bothSel, SIGNAL(clicked()), this, SLOT(switchBoth()));
     selLayout->addWidget(bothSel);
-    bothSel->setEnabled(false);
+//    bothSel->setEnabled(false);
 
     checkLayout->addLayout(selLayout);
 
 //    rightSel->setChecked(true);
-    rightSel->click();
     
+    std::cout << "HMP -- Command Buttons" << std::endl;
     
     QVBoxLayout* cmdLayout = new QVBoxLayout;
     
@@ -171,35 +177,10 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //            grid->addWidget(datas[i][j], i, j, 1, 1);
 //        }
 //    }
+
+    std::cout << "HMP -- Grasp Commands" << std::endl;
     
     QVBoxLayout* graspLayout = new QVBoxLayout;
-
-    QHBoxLayout* rightGraspLay = new QHBoxLayout;
-    graspSelR = new QButtonGroup;
-    graspSelR->setExclusive(true);
-    graspRB = new QPushButton;
-    graspRB->setText("Grasp R");
-    rightGraspLay->addWidget(graspRB);
-    graspSelR->addButton(graspRB);
-    connect(graspRB, SIGNAL(clicked()), this, SLOT(graspR()));
-//    connect(graspRB, SIGNAL(clicked()), &libertyThread, SLOT(graspR()));
-//    connect(graspRB, SIGNAL(clicked()), &spacenavThread, SLOT(graspR()));
-    openRB = new QPushButton;
-    openRB->setText("Open R");
-    rightGraspLay->addWidget(openRB);
-    graspSelR->addButton(openRB);
-    connect(openRB, SIGNAL(clicked()), this, SLOT(openR()));
-//    connect(openRB, SIGNAL(clicked()), &libertyThread, SLOT(openR()));
-//    connect(openRB, SIGNAL(clicked()), &spacenavThread, SLOT(openR()));
-    loosenRB = new QPushButton;
-    loosenRB->setText("Loosen R");
-    rightGraspLay->addWidget(loosenRB);
-    graspSelR->addButton(loosenRB);
-    connect(loosenRB, SIGNAL(clicked()), this, SLOT(loosenR()));
-//    connect(loosenRB, SIGNAL(clicked()), &libertyThread, SLOT(loosenR()));
-//    connect(loosenRB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenR()));
-
-    graspLayout->addLayout(rightGraspLay);
 
     QHBoxLayout* leftGraspLay = new QHBoxLayout;
     graspSelL = new QButtonGroup;
@@ -227,6 +208,33 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
 //    connect(loosenLB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenL()));
 
     graspLayout->addLayout(leftGraspLay);
+
+    QHBoxLayout* rightGraspLay = new QHBoxLayout;
+    graspSelR = new QButtonGroup;
+    graspSelR->setExclusive(true);
+    graspRB = new QPushButton;
+    graspRB->setText("Grasp R");
+    rightGraspLay->addWidget(graspRB);
+    graspSelR->addButton(graspRB);
+    connect(graspRB, SIGNAL(clicked()), this, SLOT(graspR()));
+//    connect(graspRB, SIGNAL(clicked()), &libertyThread, SLOT(graspR()));
+//    connect(graspRB, SIGNAL(clicked()), &spacenavThread, SLOT(graspR()));
+    openRB = new QPushButton;
+    openRB->setText("Open R");
+    rightGraspLay->addWidget(openRB);
+    graspSelR->addButton(openRB);
+    connect(openRB, SIGNAL(clicked()), this, SLOT(openR()));
+//    connect(openRB, SIGNAL(clicked()), &libertyThread, SLOT(openR()));
+//    connect(openRB, SIGNAL(clicked()), &spacenavThread, SLOT(openR()));
+    loosenRB = new QPushButton;
+    loosenRB->setText("Loosen R");
+    rightGraspLay->addWidget(loosenRB);
+    graspSelR->addButton(loosenRB);
+    connect(loosenRB, SIGNAL(clicked()), this, SLOT(loosenR()));
+//    connect(loosenRB, SIGNAL(clicked()), &libertyThread, SLOT(loosenR()));
+//    connect(loosenRB, SIGNAL(clicked()), &spacenavThread, SLOT(loosenR()));
+
+    graspLayout->addLayout(rightGraspLay);
 
     QHBoxLayout* trigGraspLay = new QHBoxLayout;
     graspSelT = new QButtonGroup;
@@ -260,6 +268,8 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     spacenavThread.openChannels();
 
 //    dumbLayout->addLayout(grid);
+
+    std::cout << "HMP -- Nudge Requests" << std::endl;
     
     QHBoxLayout* waistBoxLayout = new QHBoxLayout;
     QLabel* waistLab = new QLabel;
@@ -404,7 +414,8 @@ HuboMotionPanel::HuboMotionPanel(QWidget *parent)
     setLayout(dumbLayout);
 
 
-    
+
+    rightSel->click();
 
 
 }

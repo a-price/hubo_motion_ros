@@ -251,7 +251,6 @@ void HuboMotionPanel::switchRight()
         hubo_motion_ros::TeleopCmd cmd;
         cmd.CommandType = hubo_motion_ros::TeleopCmd::SWITCH_RIGHT;
         cmdPublisher.publish(cmd);
-        
         leftSel->setStyleSheet("");
         rightSel->setStyleSheet(sideSelectedStyle);
         bothSel->setStyleSheet("");

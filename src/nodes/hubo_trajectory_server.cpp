@@ -584,7 +584,7 @@ public:
 				currentPoses.poses.push_back(goalPose);
                 
                 
-                if(goal->DualOffset.size()<armIter)
+                if(goal->DualOffset.size()>0) // TODO: Fix this for multiple things maybe
                 {
                     cmd.m_mode[armIdx] = manip_mode_t::MC_DUAL_TELEOP;
                     if(armIdx==RIGHT)
@@ -599,6 +599,17 @@ public:
                     cmd.dual_offset.i = goal->DualOffset[armIter].poses[poseIter].orientation.x;
                     cmd.dual_offset.j = goal->DualOffset[armIter].poses[poseIter].orientation.y;
                     cmd.dual_offset.k = goal->DualOffset[armIter].poses[poseIter].orientation.z;
+                }
+                else
+                {
+                    int alt;
+                    if(armIdx==RIGHT)
+                        alt = LEFT;
+                    else if(armIdx==LEFT)
+                        alt = RIGHT;
+
+                    if(cmd.m_mode[alt] == manip_mode_t::MC_DUAL_TELEOP)
+                        cmd.m_mode[alt] = manip_mode_t::MC_TELEOP;
                 }
 			}
 

@@ -109,7 +109,7 @@ void dualHelper()
     moveit_msgs::GetPositionFKResponse resp;
     gFKinClient.call(req, resp);
 
-    Eigen::Isometry3d rightPose;
+    Eigen::Isometry3d rightPose = Eigen::Isometry3d::Identity();
     Eigen::Quaterniond rightQuat(resp.pose_stamped[0].pose.orientation.w,
                                  resp.pose_stamped[0].pose.orientation.x,
                                  resp.pose_stamped[0].pose.orientation.y,
@@ -194,7 +194,7 @@ void jointStateCallback( const sensor_msgs::JointStateConstPtr &state )
                 }
             }
         }
-        else if(state->name[i] == "TSY")
+        else if(state->name[i] == "TSY") // TODO: Maybe neck joints?
         {
             for(int j=0; j<planState.name.size(); j++)
             {
@@ -503,7 +503,7 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
         moveit_msgs::GetPositionFKResponse resp;
         gFKinClient.call(req, resp);
     
-        Eigen::Isometry3d rightPose;
+        Eigen::Isometry3d rightPose = Eigen::Isometry3d::Identity();
         Eigen::Quaterniond rightQuat(resp.pose_stamped[0].pose.orientation.w,
                                      resp.pose_stamped[0].pose.orientation.x,
                                      resp.pose_stamped[0].pose.orientation.y,
@@ -511,15 +511,22 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
         Eigen::Vector3d rightTrans(resp.pose_stamped[0].pose.position.x,
                                    resp.pose_stamped[0].pose.position.y,
                                    resp.pose_stamped[0].pose.position.z);
+
+        std::cout << "right: " << rightTrans.transpose() << "\n:\n"
+                  << rightQuat.w() << ", "
+                  << rightQuat.x() << ", "
+                  << rightQuat.y() << ", "
+                  << rightQuat.z() << std::endl;
+
         rightPose.translate(rightTrans);
         rightPose.rotate(rightQuat);
-        
+
         
         req.fk_link_names[0] = "LeftArm";
         
         gFKinClient.call(req, resp);
         
-        Eigen::Isometry3d leftPose;
+        Eigen::Isometry3d leftPose = Eigen::Isometry3d::Identity();
         Eigen::Quaterniond leftQuat(resp.pose_stamped[0].pose.orientation.w,
                                      resp.pose_stamped[0].pose.orientation.x,
                                      resp.pose_stamped[0].pose.orientation.y,
@@ -527,12 +534,24 @@ void sendCommandCallback(const hubo_motion_ros::TeleopCmd cmd)
         Eigen::Vector3d leftTrans(resp.pose_stamped[0].pose.position.x,
                                    resp.pose_stamped[0].pose.position.y,
                                    resp.pose_stamped[0].pose.position.z);
+
+        std::cout << "left: " << leftTrans.transpose() << "\t:\t"
+                  << leftQuat.w() << ", "
+                  << leftQuat.x() << ", "
+                  << leftQuat.y() << ", "
+                  << leftQuat.z() << std::endl;
+
         leftPose.translate(leftTrans);
         leftPose.rotate(leftQuat);
         
         offsetPose = leftPose.inverse() * rightPose;
-        
-        gRPosePublisher.publish(joyInt.currentPose);
+
+        std::cerr << "Right:" << std::endl << rightPose.matrix() << std::endl << std::endl
+                  << "Left:" << std::endl << leftPose.matrix() << std::endl << std::endl
+                  << "Offset:" << std::endl << offsetPose.matrix() << std::endl << std::endl;
+
+        placeJoystick();
+//        gRPosePublisher.publish(joyInt.currentPose);
     }
 
 }
@@ -783,6 +802,8 @@ int main(int argc, char** argv)
 {
 	ROS_INFO("Started fullbody_teleop.");
 	ros::init(argc, argv, "fullbody_teleop");
+
+    offsetPose = Eigen::Isometry3d::Identity();
 
     armSide = RIGHT;
     joyInt.settings.useLocalRotations = false;
