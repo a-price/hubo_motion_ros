@@ -1,4 +1,5 @@
 <launch>
+
 	<param name="/robot_description" textfile="$(find drchubo_v2)/robots/drchubo_v2.urdf" />
     <param name="/position_speed" value="0.025" />
 
@@ -15,4 +16,7 @@
 		<remap from="/joint_states" to="/hubo/joint_plan_states"/>
 	</node>
     <node name="hubo_trajectory_server" pkg="hubo_motion_ros" type="hubo_trajectory_server" />
+
+    <node name="bind_plan_to_state" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 /Plan_Torso /Body_Torso 100" />
+
 </launch>
